@@ -1,0 +1,1928 @@
+/* ============================================================================
+   Vibe Tasks — UI/UX Max dark theme
+   Tokens lifted verbatim from plan Task 4.1, plus Command Center base styles.
+   ========================================================================== */
+
+:root {
+  --bg: #121319;
+  --bg-2: #171922;
+  --panel: rgba(255, 255, 255, 0.015);
+  --card-top: #22242d;
+  --card-bot: #1d1f27;
+  --border: rgba(255, 255, 255, 0.07);
+  --text: #edeef2;
+  --muted: #868996;
+  --faint: #666a78;
+  --accent: #7c8cff;
+  --accent-soft: rgba(124, 140, 255, 0.22);
+  --p-high: #f0596a;
+  --p-med: #f6a64b;
+  --p-low: #5b6bff;
+  --done: #5ddb9e;
+  --radius: 10px;
+  --radius-lg: 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(120% 120% at 0% 0%, #191b22, #121319 60%);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ----------------------------------------------------------------------------
+   App shell — Command Center grid: sidebar | center | right column
+   -------------------------------------------------------------------------- */
+
+.app {
+  display: grid;
+  grid-template-columns: 232px 1fr 320px;
+  grid-template-rows: 52px 1fr;
+  grid-template-areas:
+    'sidebar titlebar titlebar'
+    'sidebar center    right';
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ---- Title bar ---- */
+
+.titlebar {
+  grid-area: titlebar;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.titlebar .project-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.titlebar .spacer {
+  flex: 1;
+}
+
+/* All / Mine / Claude filter */
+.filter {
+  display: inline-flex;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+.filter button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  transition: background 0.12s, color 0.12s;
+}
+.filter button.active {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Board / Graph toggle */
+.viewtoggle {
+  display: inline-flex;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+.viewtoggle button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 7px;
+}
+.viewtoggle button.active {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* ⌘K hint */
+.cmdk-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--faint);
+  font-size: 12px;
+}
+.cmdk-hint kbd {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: inherit;
+}
+
+/* "+ New" task button (opens the floating New task modal) */
+.new-task-btn {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.new-task-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* titlebar space selector + repo-path button */
+.titlebar-space-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.titlebar-space-select:hover,
+.titlebar-space-select:focus {
+  border-color: var(--accent-soft);
+  color: var(--text);
+}
+.titlebar-space-select option {
+  background: #1d1f27;
+  color: var(--text);
+}
+.titlebar-repo-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--faint);
+  font-size: 13px;
+  padding: 4px 8px;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0.55;
+}
+.titlebar-repo-btn:hover {
+  opacity: 1;
+  border-color: var(--border);
+  background: var(--bg-2);
+}
+.titlebar-repo-btn.has-path {
+  opacity: 1;
+  border-color: var(--done);
+  box-shadow: 0 0 0 1px rgba(93, 219, 158, 0.25);
+}
+.titlebar-repo-input {
+  background: var(--bg-2);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  outline: none;
+  width: 280px;
+}
+.titlebar-open-claude-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--faint);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+}
+.titlebar-open-claude-btn:hover {
+  color: var(--text);
+  border-color: var(--accent-soft);
+  background: var(--bg-2);
+}
+
+/* ----------------------------------------------------------------------------
+   Sidebar — project rail
+   -------------------------------------------------------------------------- */
+
+.sidebar {
+  grid-area: sidebar;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+  overflow-y: auto;
+}
+.sidebar .brand {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--text);
+  padding: 4px 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar .brand .logo {
+  color: var(--accent);
+}
+.sidebar .rail-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--faint);
+  padding: 6px 10px;
+}
+.project-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--muted);
+  border: 1px solid transparent;
+  width: 100%;
+  background: transparent;
+  text-align: left;
+}
+.project-item:hover {
+  background: var(--bg-2);
+  color: var(--text);
+}
+.project-item.active {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-color: var(--border);
+}
+.project-item .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.03);
+}
+.project-item .marker {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 11px;
+}
+.sidebar .new-project {
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+.sidebar .new-project:hover {
+  color: var(--text);
+  border-color: var(--accent-soft);
+}
+.spaces-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.add-space-button {
+  margin-right: 7px;
+  padding: 0 5px;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  font-size: 17px;
+  line-height: 1;
+}
+.add-space-button:hover {
+  color: var(--accent);
+}
+.space-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.space-section {
+  min-width: 0;
+}
+.space-header {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 2px 4px;
+  color: var(--faint);
+}
+.space-drag-handle {
+  cursor: grab;
+  padding: 2px 3px;
+  font-size: 13px;
+  opacity: 0;
+  user-select: none;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.space-header:hover .space-drag-handle {
+  opacity: 0.5;
+}
+.space-drag-handle:active {
+  cursor: grabbing;
+  opacity: 1;
+}
+.space-toggle,
+.space-name,
+.space-action {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.space-toggle {
+  width: 20px;
+  padding: 2px;
+  font-size: 17px;
+  line-height: 1;
+}
+.space-name {
+  min-width: 0;
+  overflow: hidden;
+  padding: 3px 2px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+}
+.space-header:hover,
+.space-header:focus-within {
+  color: var(--muted);
+}
+.space-count {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  color: var(--faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.space-actions {
+  display: none;
+  gap: 1px;
+  margin-left: auto;
+}
+.space-header:hover .space-actions,
+.space-header:focus-within .space-actions,
+.space-actions.confirming {
+  display: inline-flex;
+}
+.space-action {
+  padding: 2px 4px;
+  border-radius: 5px;
+  font-size: 10px;
+}
+.space-action:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--bg);
+}
+.space-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+.space-action.danger {
+  color: var(--danger, #e5484d);
+}
+.space-action.danger:hover {
+  color: #fff;
+  background: var(--danger, #e5484d);
+}
+.space-name-input {
+  min-width: 0;
+  flex: 1;
+  padding: 3px 5px;
+  border: 1px solid var(--accent-soft);
+  border-radius: 5px;
+  outline: none;
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+}
+.space-projects {
+  padding-left: 10px;
+}
+.space-new-project {
+  width: calc(100% - 4px);
+  margin: 3px 2px 6px;
+  padding: 6px 8px;
+  border-color: transparent;
+  font-size: 11px;
+  text-align: left;
+}
+.space-new-project:hover {
+  background: var(--bg-2);
+}
+.space-project-input {
+  width: calc(100% - 4px);
+  margin: 3px 2px 6px;
+  padding: 6px 8px;
+}
+.sidebar .new-space {
+  margin: 8px 4px 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+.sidebar .new-space:hover {
+  color: var(--text);
+  border-color: var(--accent-soft);
+}
+.new-space-input {
+  margin: 8px 4px 0;
+}
+
+/* ---- Sidebar settings (terminal + Claude binary) ---- */
+.sidebar-settings {
+  margin-top: auto;
+  padding-top: 10px;
+}
+.sidebar .settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0 4px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+.sidebar .settings-toggle:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+.settings-caret {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--faint);
+  transition: transform 0.12s ease;
+}
+.settings-caret.open {
+  transform: rotate(90deg);
+}
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 6px 4px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.settings-row-stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+.settings-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.settings-select,
+.settings-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.settings-select {
+  max-width: 60%;
+}
+.settings-input {
+  width: 100%;
+}
+.settings-select:focus,
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ----------------------------------------------------------------------------
+   Center — board / graph region
+   -------------------------------------------------------------------------- */
+
+.center {
+  grid-area: center;
+  overflow: hidden;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---- Board shell: stacks NextGoal banner above the kanban grid ---- */
+
+.board-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+}
+
+.board {
+  display: grid;
+  /* Columns keep a usable min width and grow to fill; when they don't all fit,
+     the board scrolls sideways instead of squishing. Each column scrolls its own
+     cards vertically (see .column-body). */
+  grid-template-columns: repeat(5, minmax(260px, 1fr));
+  /* Lock the single row to the board's height (minmax(0,…) so it can't be grown
+     past the viewport by a tall column). Without this the row is `auto`-sized and
+     a column with many cards stretches the row beyond the board, which clips the
+     overflow (overflow-y: hidden) instead of letting .column-body scroll. */
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* ---- Next Goal banner ---- */
+
+.next-goal {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+
+.next-goal--empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  opacity: 0.45;
+  padding: 8px 14px;
+  transition: opacity 0.15s;
+}
+.next-goal--empty:hover { opacity: 0.85; }
+
+.ng-empty-icon { font-size: 13px; }
+.ng-empty-text { font-size: 12px; font-style: italic; }
+
+.ng-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ng-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ng-goal-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.next-goal--collapsed .ng-goal-text {
+  white-space: normal;
+  overflow: visible;
+}
+
+.ng-header-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ng-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, rgba(255,255,255,0.35));
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.12s, background 0.12s;
+}
+.ng-icon-btn:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.ng-body {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ng-subgoals {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 24px;
+}
+
+.ng-subgoal {
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  list-style: disc;
+}
+
+.ng-following {
+  font-size: 11px;
+  color: rgba(255,255,255,0.38);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.ng-following-label { font-style: normal; font-weight: 500; }
+
+/* editing form */
+
+.next-goal--editing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ng-field { display: flex; flex-direction: column; gap: 4px; }
+
+.ng-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ng-hint { text-transform: none; font-weight: 400; opacity: 0.6; }
+
+.ng-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 6px);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 8px;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+.ng-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ng-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ng-btn {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: var(--radius, 6px);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ng-btn--save {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.ng-btn--save:hover { opacity: 0.85; }
+.ng-btn--cancel {
+  background: transparent;
+  color: var(--text);
+}
+.ng-btn--cancel:hover { background: var(--accent-soft); }
+
+/* ---- Graph view (React Flow canvas) ---- */
+
+.graph-view {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.graph-view .react-flow {
+  background: transparent;
+}
+/* Dark-theme the default Controls so they sit on the panel */
+.graph-view .react-flow__controls {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.graph-view .react-flow__controls-button {
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  fill: var(--text);
+}
+.graph-view .react-flow__controls-button:hover {
+  background: var(--bg);
+}
+.graph-view .react-flow__controls-button svg {
+  fill: var(--muted);
+}
+.graph-view .react-flow__node:hover {
+  filter: brightness(1.12);
+  cursor: pointer;
+}
+.graph-view .react-flow__attribution {
+  display: none;
+}
+
+/* ---- Column ---- */
+
+.column {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.column-header .count {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+.column-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.completion-bar {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 4px;
+  margin: 0 14px 10px;
+  overflow: hidden;
+}
+.completion-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--done);
+  border-radius: 4px;
+}
+
+/* ---- Card ---- */
+
+.card {
+  position: relative;
+  background: linear-gradient(180deg, var(--card-top), var(--card-bot));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px 12px 16px;
+  overflow: hidden;
+  /* Each card keeps its natural height; the column-body scrolls when cards
+     overflow, instead of flex-shrinking cards (which clips their content). */
+  flex: 0 0 auto;
+  /* Cards are draggable (dnd-kit) → the pointer becomes a grab hand, and a
+     grabbing (closed) hand while a drag is in progress. */
+  cursor: grab;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset,
+    0 6px 18px rgba(0, 0, 0, 0.25);
+}
+.card:active {
+  cursor: grabbing;
+}
+.card:hover {
+  border-color: var(--accent-soft);
+}
+.card .priority-rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+.card .priority-rail.high {
+  background: var(--p-high);
+}
+.card .priority-rail.med {
+  background: var(--p-med);
+}
+.card .priority-rail.low {
+  background: var(--p-low);
+}
+.card .priority-rail.none {
+  background: transparent;
+}
+.card .card-title {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text);
+}
+.card .card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  flex-wrap: wrap;
+}
+
+/* ---- Badges ---- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+}
+.badge.priority-high {
+  color: var(--p-high);
+  border-color: rgba(240, 89, 106, 0.3);
+}
+.badge.priority-med {
+  color: var(--p-med);
+  border-color: rgba(246, 166, 75, 0.3);
+}
+.badge.priority-low {
+  color: var(--p-low);
+  border-color: rgba(91, 107, 255, 0.3);
+}
+.badge.link-badge {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+.badge.subtask {
+  color: var(--muted);
+}
+
+/* task reference number (#42) */
+.card-ref {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+.detail-ref {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* version badge + Complete-column version sections */
+.badge.version-badge {
+  color: #8ab4ff;
+  border-color: rgba(138, 180, 255, 0.3);
+  font-variant-numeric: tabular-nums;
+}
+.version-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.version-section-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 2px 2px;
+  text-align: left;
+}
+.version-section-header .chevron {
+  font-size: 9px;
+  transition: transform 0.12s ease;
+}
+.version-section-header .chevron.open {
+  transform: rotate(90deg);
+}
+.version-section-label {
+  color: var(--text);
+}
+.version-section-count {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+/* kind / type badges */
+.badge.kind-fix {
+  color: var(--p-high);
+  border-color: rgba(240, 89, 106, 0.3);
+}
+.badge.kind-feature {
+  color: #46c39a;
+  border-color: rgba(70, 195, 154, 0.35);
+}
+.badge.kind-chore {
+  color: var(--muted);
+}
+.badge.kind-rule {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+.badge.kind-docs {
+  color: #c08cff;
+  border-color: rgba(192, 140, 255, 0.35);
+}
+
+/* ✦ Claude marker */
+.claude-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--accent);
+}
+.claude-marker .star {
+  font-size: 11px;
+}
+
+/* reopened badge — task moved back out of the Complete column */
+.badge.reopened-badge {
+  color: var(--p-med);
+  border-color: rgba(246, 166, 75, 0.4);
+}
+.reopened-badge {
+  margin-left: 10px;
+  font-size: 10.5px;
+  color: var(--p-med);
+}
+
+/* drag overlay — the card copy that follows the cursor while dragging */
+.card-overlay {
+  cursor: grabbing;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  transform: rotate(1.5deg);
+}
+
+/* the Dropped column reads as de-emphasised */
+.column[data-status='dropped'] .card {
+  opacity: 0.78;
+}
+.column[data-status='dropped'] .card-title {
+  text-decoration: line-through;
+  text-decoration-color: var(--faint);
+}
+
+/* ----------------------------------------------------------------------------
+   Right column — todos over notes
+   -------------------------------------------------------------------------- */
+
+.right {
+  grid-area: right;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.notes-panel {
+  flex: 1;
+  min-height: 0;
+}
+.last-session {
+  flex: 0 1 auto;
+  max-height: 45%;
+}
+.recap-body {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px;
+  overflow: hidden;
+}
+.panel + .panel {
+  border-top: 1px solid var(--border);
+}
+.panel-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+
+/* ---- Todo list ---- */
+
+.todo-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--text);
+  padding: 5px 4px;
+  border-radius: 7px;
+}
+.todo-item:hover {
+  background: var(--bg-2);
+}
+.todo-item .check {
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg);
+  font-size: 10px;
+}
+.todo-item.done .check {
+  background: var(--done);
+  border-color: var(--done);
+}
+.todo-item.done .label {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+/* ---- Notes ---- */
+
+.notes-area {
+  flex: 1;
+  resize: none;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 12px;
+  outline: none;
+}
+.notes-area:focus {
+  border-color: var(--accent-soft);
+}
+
+/* ---- Generic empty / placeholder ---- */
+
+.placeholder {
+  color: var(--faint);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 20px;
+}
+
+/* ----------------------------------------------------------------------------
+   Sidebar extras — filter, project actions, inline new-project input
+   -------------------------------------------------------------------------- */
+
+.sidebar-filter {
+  margin: 0 4px 6px;
+  width: calc(100% - 8px);
+}
+.sidebar-filter button {
+  flex: 1;
+}
+.project-item {
+  cursor: pointer;
+}
+.project-item .project-name-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-item .project-actions {
+  margin-left: auto;
+  display: none;
+  gap: 2px;
+}
+.project-item:hover .project-actions {
+  display: inline-flex;
+}
+/* keep the ✦ marker pinned right when actions are hidden */
+.project-item .marker {
+  margin-left: auto;
+}
+.project-item:hover .marker {
+  margin-left: 6px;
+}
+.proj-action {
+  background: transparent;
+  border: 0;
+  color: var(--faint);
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 5px;
+}
+.proj-action:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+/* armed two-step delete stays visible without hover */
+.project-item .project-actions.confirming {
+  display: inline-flex;
+}
+.proj-action.danger {
+  color: var(--danger, #e5484d);
+}
+.proj-action.danger:hover {
+  color: #fff;
+  background: var(--danger, #e5484d);
+}
+
+/* inline rename reuses the new-project input inside a row */
+.new-project-input.rename-input {
+  margin-top: 0;
+  padding: 2px 6px;
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.new-project-input {
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  border: 1px solid var(--accent-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+/* ----------------------------------------------------------------------------
+   Todo extras — empty state, ✦ marker, delete on hover, inline add
+   -------------------------------------------------------------------------- */
+
+.todo-empty {
+  color: var(--faint);
+  font-size: 12px;
+  padding: 4px;
+}
+.todo-item .check {
+  background: transparent;
+  cursor: pointer;
+}
+.todo-item .label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.todo-marker {
+  color: var(--accent);
+  font-size: 11px;
+}
+.todo-delete {
+  display: none;
+  background: transparent;
+  border: 0;
+  color: var(--faint);
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 5px;
+}
+.todo-item:hover .todo-delete {
+  display: inline-flex;
+}
+.todo-delete:hover {
+  color: var(--p-high);
+}
+.todo-add {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+.todo-add:focus {
+  border-color: var(--accent-soft);
+}
+.todo-add:disabled {
+  opacity: 0.5;
+}
+
+/* ----------------------------------------------------------------------------
+   Modal shell — centered floating window shared by Task detail + New task
+   -------------------------------------------------------------------------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  z-index: 50;
+}
+.modal-card {
+  width: 520px;
+  max-width: 92vw;
+  max-height: 86vh;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* fixed top bar — doesn't scroll with the body */
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.modal-heading {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text);
+}
+/* scrollable field region between header and footer */
+.modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 18px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* fixed bottom bar — Create / delete actions */
+.modal-footer {
+  flex: 0 0 auto;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.modal-create {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+.modal-create:hover {
+  filter: brightness(1.08);
+}
+.modal-create:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.modal-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--faint);
+  font-size: 11px;
+}
+.modal-hint kbd {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: inherit;
+}
+.detail-source {
+  font-size: 11px;
+  color: var(--accent);
+}
+.detail-close {
+  margin-left: auto;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.detail-close:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+.detail-title {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  padding: 2px 0;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.detail-title:focus {
+  border-bottom-color: var(--accent-soft);
+}
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.detail-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--faint);
+}
+.detail-input,
+.detail-textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 8px 10px;
+  outline: none;
+}
+.detail-textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.detail-input:focus,
+.detail-textarea:focus {
+  border-color: var(--accent-soft);
+}
+
+/* priority picker */
+.priority-picker {
+  display: inline-flex;
+  gap: 6px;
+}
+.prio-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+.prio-btn.active {
+  color: var(--text);
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+.prio-btn.high.active {
+  color: var(--p-high);
+  border-color: rgba(240, 89, 106, 0.4);
+}
+.prio-btn.med.active {
+  color: var(--p-med);
+  border-color: rgba(246, 166, 75, 0.4);
+}
+.prio-btn.low.active {
+  color: var(--p-low);
+  border-color: rgba(91, 107, 255, 0.4);
+}
+
+/* kind / type picker */
+.kind-picker {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kind-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+.kind-btn.active {
+  color: var(--text);
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+
+/* chips (paths / symbols) */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text);
+  font-size: 11.5px;
+  padding: 3px 6px 3px 10px;
+}
+.chip-x {
+  background: transparent;
+  border: 0;
+  color: var(--faint);
+  font-size: 10px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.chip-x:hover {
+  color: var(--p-high);
+}
+.chip-input {
+  flex: 1;
+  min-width: 90px;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  padding: 4px 2px;
+}
+
+/* subtasks */
+.subtask-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--text);
+  padding: 4px 2px;
+}
+.subtask-item .check {
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg);
+  font-size: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+.subtask-item.done .check {
+  background: var(--done);
+  border-color: var(--done);
+}
+.subtask-item.done .label {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+.subtask-item .label {
+  flex: 1;
+}
+.subtask-add {
+  margin-top: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+.subtask-add:focus {
+  border-color: var(--accent-soft);
+}
+
+/* links */
+.link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.link-empty {
+  color: var(--faint);
+  font-size: 12px;
+}
+.link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg);
+  border: 1px solid var(--accent-soft);
+  border-radius: 20px;
+  color: var(--accent);
+  font-size: 11.5px;
+  padding: 3px 6px 3px 10px;
+}
+.link-add {
+  margin-top: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+.link-add:hover,
+.link-add:focus {
+  border-color: var(--accent-soft);
+  color: var(--text);
+}
+.link-add option {
+  background: #1d1f27;
+  color: var(--text);
+}
+
+/* delete task — destructive action in the modal footer with a two-step confirm */
+.detail-start {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #3f6f4f;
+  background: transparent;
+  color: #8fd6a5;
+  font-size: 13px;
+  cursor: pointer;
+}
+.detail-start:hover:not(:disabled) { background: rgba(63, 111, 79, 0.18); }
+.detail-start:disabled { opacity: 0.45; cursor: default; }
+
+.detail-delete {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+}
+.detail-delete:hover {
+  color: var(--p-high);
+  border-color: rgba(240, 89, 106, 0.4);
+}
+.detail-delete.danger {
+  color: #fff;
+  background: var(--p-high);
+  border-color: var(--p-high);
+}
+.detail-delete.danger:hover {
+  color: #fff;
+  filter: brightness(1.08);
+}
+.detail-delete-cancel {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+.detail-delete-cancel:hover {
+  color: var(--text);
+}
+
+/* ----------------------------------------------------------------------------
+   Command palette (⌘K)
+   -------------------------------------------------------------------------- */
+
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 14vh;
+  z-index: 60;
+}
+.palette {
+  width: 540px;
+  max-width: 92vw;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.palette-input {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 14px 16px;
+  outline: none;
+}
+.palette-list {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.palette-empty {
+  color: var(--faint);
+  font-size: 13px;
+  padding: 14px 12px;
+}
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.palette-item.active {
+  background: var(--accent-soft);
+}
+.palette-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-hint {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--faint);
+}
+
+/* ----------------------------------------------------------------------------
+   Resizable panels — draggable dividers + per-column quick-add
+   -------------------------------------------------------------------------- */
+
+.app {
+  position: relative;
+}
+.right {
+  position: relative;
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 35;
+}
+.resize-handle.vertical {
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+}
+.resize-handle.horizontal {
+  left: 0;
+  right: 0;
+  height: 7px;
+  cursor: row-resize;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  background: transparent;
+  transition: background 0.12s;
+}
+.resize-handle.vertical::after {
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+}
+.resize-handle.horizontal::after {
+  left: 0;
+  right: 0;
+  top: 3px;
+  height: 1px;
+}
+.resize-handle:hover::after {
+  background: var(--accent);
+}
+
+/* per-column quick add */
+.column-add {
+  margin: 0 10px 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 20px);
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.column-add::placeholder {
+  color: var(--faint);
+}
+.column-add:focus {
+  border-color: var(--accent-soft);
+}
+
+/* ---- toasts ---------------------------------------------------------------- */
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+}
+.toast {
+  max-width: 380px;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+.toast-success { border-color: #3f6f4f; }
+.toast-error { border-color: #7f3b46; }
+.toast-info { border-color: var(--border); }
+
+/* ---- start button --------------------------------------------------------- */
+.detail-start {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #3f6f4f;
+  background: transparent;
+  color: #8fd6a5;
+  font-size: 13px;
+  cursor: pointer;
+}
+.detail-start:hover:not(:disabled) { background: rgba(63, 111, 79, 0.18); }
+.detail-start:disabled { opacity: 0.45; cursor: default; }

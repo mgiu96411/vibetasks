@@ -1,0 +1,24 @@
+node_modules/
+dist/
+**/target/
+.superpowers/
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+
+# Local-only working artifacts
+.playwright-mcp/
+meeting-notes.md
+
+# Internal design/audit docs — not part of the public release
+docs/superpowers/
+docs/claude-code-audit-handoff.md
+
+# Personal tooling config (not needed by users)
+mempalace.yaml
+
+# Maintainer's internal agent-instruction files — NOT shipped. The shareable
+# protocol users add to their own CLAUDE.md/AGENTS.md is docs/vibetasks-claude-protocol.md.
+CLAUDE.md
+AGENTS.md
