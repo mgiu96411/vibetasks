@@ -1135,6 +1135,52 @@ pub fn open_claude(
     Ok(format!("Opened Claude in {terminal_app}"))
 }
 
+// ---- terminal detection -----------------------------------------------------
+
+/// `.app` bundle names (without the `.app` suffix) for each first-class
+/// terminal id used by `resolve_launch_args`. The id is what the UI persists +
+/// passes to start_task/open_claude; the bundle name is what we look for on disk.
+fn terminal_bundle_name(id: &str) -> Option<&'static str> {
+    match id {
+        "Ghostty" => Some("Ghostty"),
+        "Terminal" => Some("Terminal"),
+        "iTerm" => Some("iTerm"),
+        _ => None,
+    }
+}
+
+/// True if an `.app` bundle named `<bundle>.app` exists in any standard macOS
+/// app location. Terminal.app ships under /System/Applications/Utilities, the
+/// others install into /Applications or ~/Applications.
+fn terminal_is_installed(bundle: &str) -> bool {
+    let mut dirs: Vec<std::path::PathBuf> = vec![
+        std::path::PathBuf::from("/Applications"),
+        std::path::PathBuf::from("/Applications/Utilities"),
+        std::path::PathBuf::from("/System/Applications"),
+        std::path::PathBuf::from("/System/Applications/Utilities"),
+    ];
+    if let Some(home) = dirs::home_dir() {
+        dirs.push(home.join("Applications"));
+    }
+    let app = format!("{bundle}.app");
+    dirs.iter().any(|d| d.join(&app).is_dir())
+}
+
+/// Probes which first-class terminals (Ghostty / Terminal / iTerm) are actually
+/// installed, so the UI can gray out the missing ones. Returns the subset of the
+/// passed `ids` that resolve to an installed `.app`. Custom terminals (not in
+/// the first-class list) are not probed — the UI treats those separately.
+#[tauri::command]
+pub fn detect_terminals(ids: Vec<String>) -> Vec<String> {
+    ids.into_iter()
+        .filter(|id| {
+            terminal_bundle_name(id)
+                .map(terminal_is_installed)
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
 // ---- notes / goal -----------------------------------------------------------
 
 #[tauri::command]
@@ -1167,9 +1213,20 @@ pub fn set_notes(state: State<Db>, project_id: String, body: String) -> CmdResul
 mod tests {
     use super::{
         build_start_prompt, iterm_applescript, launcher_script, normalize_repo_path,
-        open_fallback_args, plan_path_in, shell_quote, terminal_app_applescript, LaunchGuard,
+        open_fallback_args, plan_path_in, shell_quote, terminal_app_applescript,
+        terminal_bundle_name, LaunchGuard,
     };
     use std::time::Duration;
+
+    #[test]
+    fn terminal_bundle_name_maps_first_class_ids_only() {
+        assert_eq!(terminal_bundle_name("Ghostty"), Some("Ghostty"));
+        assert_eq!(terminal_bundle_name("Terminal"), Some("Terminal"));
+        assert_eq!(terminal_bundle_name("iTerm"), Some("iTerm"));
+        // Custom / unknown ids aren't probed.
+        assert_eq!(terminal_bundle_name("WezTerm"), None);
+        assert_eq!(terminal_bundle_name(""), None);
+    }
 
     #[test]
     fn plan_path_in_matches_only_md_under_a_plans_segment() {

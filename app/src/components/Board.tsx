@@ -22,6 +22,7 @@ import {
   useSensors,
   closestCorners,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -45,21 +46,29 @@ function matchesFilter(task: Task, filter: Filter): boolean {
   return true;
 }
 
-/** Resolve which column status a drop target belongs to. The target id is
- *  either a column droppable id ("column:<status>") or a card id. */
-function statusOfOverId(overId: string, byId: Map<string, Task>): Status | null {
-  if (overId.startsWith('column:')) {
-    return overId.slice('column:'.length) as Status;
-  }
-  return byId.get(overId)?.status ?? null;
+// Title is the primary target; task number (ref, prefix match) and body
+// (brief + details) broaden recall so nothing is missed. Empty query matches all.
+function matchesSearch(task: Task, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (String(task.ref).startsWith(q)) return true;
+  if (task.title.toLowerCase().includes(q)) return true;
+  const body = `${task.summary} ${task.description}`.toLowerCase();
+  return body.includes(q);
 }
 
 export default function Board() {
   const snapshot = useStore((s) => s.snapshot);
   const filter = useStore((s) => s.filter);
+  const search = useStore((s) => s.search);
+  const clearHighlight = useStore((s) => s.clearHighlight);
   const moveTask = useStore((s) => s.moveTask);
   const reorderTasks = useStore((s) => s.reorderTasks);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // During a drag we keep a working copy of the column lists so siblings open a
+  // live gap and the card previews at the hovered position (incl. across columns).
+  // Committed to the backend on drop; null when not dragging (we render baseColumns).
+  const [dragColumns, setDragColumns] = useState<Record<Status, ColumnCard[]> | null>(null);
 
   const sensors = useSensors(
     // A small activation distance lets plain clicks through to card selection.
@@ -95,9 +104,9 @@ export default function Board() {
   }, [tasks]);
 
   // Build the per-column, filtered, position-sorted card lists.
-  const columns = useMemo(() => {
+  const baseColumns = useMemo(() => {
     const top = tasks
-      .filter((t) => t.parent_id === null && matchesFilter(t, filter))
+      .filter((t) => t.parent_id === null && matchesFilter(t, filter) && matchesSearch(t, search))
       .slice()
       .sort((a, b) => a.position - b.position);
 
@@ -124,7 +133,10 @@ export default function Board() {
       });
     }
     return buckets;
-  }, [tasks, filter, subtaskRollup, linkCounts]);
+  }, [tasks, filter, search, subtaskRollup, linkCounts]);
+
+  // While dragging, render the live working copy; otherwise the snapshot-derived lists.
+  const columns = dragColumns ?? baseColumns;
 
   // Completion ratio for the Complete column's bar: done / active cards
   // (now + next + later + complete). Dropped tasks don't count against progress.
@@ -142,54 +154,144 @@ export default function Board() {
     return null;
   }, [activeId, columns]);
 
+  // Which column holds a given id in the working copy. Accepts a card id or a
+  // "column:<status>" droppable id (the empty-space target on each column).
+  function findContainer(cols: Record<Status, ColumnCard[]>, id: string): Status | null {
+    if (id.startsWith('column:')) return id.slice('column:'.length) as Status;
+    for (const col of COLUMNS) {
+      if (cols[col.status].some((c) => c.id === id)) return col.status;
+    }
+    return null;
+  }
+
   function onDragStart(event: DragStartEvent) {
     document.body.style.cursor = 'grabbing';
     document.body.style.userSelect = 'none';
     setActiveId(String(event.active.id));
+    // Seed the working copy from the current snapshot-derived lists.
+    setDragColumns({
+      now: [...baseColumns.now],
+      next: [...baseColumns.next],
+      later: [...baseColumns.later],
+      complete: [...baseColumns.complete],
+      dropped: [...baseColumns.dropped],
+    });
   }
 
   function endDrag() {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
     setActiveId(null);
+    setDragColumns(null);
+  }
+
+  // Live preview: relocate/reorder the active card to the hovered slot in the
+  // working copy so siblings open a gap where it will land. We never move the
+  // card INTO Complete here — that column is version-grouped + collapsible, and
+  // dropping the active node into a collapsed (unrendered) section unmounts it
+  // mid-drag → blank screen. Drops onto Complete are resolved in onDragEnd.
+  function onDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    setDragColumns((prev) => {
+      if (!prev) return prev;
+      const from = findContainer(prev, activeId);
+      const to = findContainer(prev, overId);
+      if (!from || !to || to === 'complete') return prev;
+
+      const fromArr = prev[from];
+      const toArr = prev[to];
+      const activeIdx = fromArr.findIndex((c) => c.id === activeId);
+      if (activeIdx === -1) return prev;
+
+      // Hovering the column's empty space targets the end; over a card targets it.
+      const overIdx = overId.startsWith('column:')
+        ? toArr.length
+        : toArr.findIndex((c) => c.id === overId);
+
+      if (from === to) {
+        // Reorder within the column (both directions) so the gap tracks smoothly.
+        const target = overIdx < 0 ? toArr.length - 1 : overIdx;
+        if (activeIdx === target) return prev;
+        return { ...prev, [to]: arrayMove(toArr, activeIdx, target) };
+      }
+
+      // Cross-column: drop from the source, splice into the target at the hovered slot.
+      const insertAt = overIdx < 0 ? toArr.length : overIdx;
+      const card = fromArr[activeIdx];
+      return {
+        ...prev,
+        [from]: fromArr.filter((c) => c.id !== activeId),
+        [to]: [...toArr.slice(0, insertAt), card, ...toArr.slice(insertAt)],
+      };
+    });
   }
 
   function onDragEnd(event: DragEndEvent) {
+    const final = dragColumns;
     endDrag();
     const { active, over } = event;
     if (!over) return;
-
     const activeId = String(active.id);
     const overId = String(over.id);
-    if (activeId === overId) return;
 
     const activeTask = byId.get(activeId);
-    if (!activeTask) return;
+    if (!activeTask || !final) return;
 
     const fromStatus = activeTask.status;
-    const toStatus = statusOfOverId(overId, byId);
+    // Target column = where the pointer was released. Resolve from `over` because
+    // the active card is deliberately never placed into Complete's working copy.
+    const toStatus = findContainer(final, overId);
     if (!toStatus) return;
 
     if (fromStatus !== toStatus) {
-      void moveTask(activeId, toStatus);
+      // Moved to another column. Non-Complete targets already hold the card at the
+      // hovered slot (from onDragOver) → persist that order. Complete is organized
+      // by version sections, so we only move the card in.
+      void (async () => {
+        await moveTask(activeId, toStatus);
+        if (toStatus !== 'complete') await reorderTasks(final[toStatus].map((c) => c.id));
+      })();
       return;
     }
 
-    const ids = columns[fromStatus].map((c) => c.id);
-    const oldIndex = ids.indexOf(activeId);
-    const newIndex = overId.startsWith('column:') ? ids.length - 1 : ids.indexOf(overId);
-    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+    if (toStatus === 'complete') {
+      // Complete isn't live-reordered; reorder within it from the drop target.
+      const ids = baseColumns.complete.map((c) => c.id);
+      const oldIndex = ids.indexOf(activeId);
+      const newIndex = overId.startsWith('column:') ? ids.length - 1 : ids.indexOf(overId);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+      void reorderTasks(arrayMove(ids, oldIndex, newIndex));
+      return;
+    }
 
-    void reorderTasks(arrayMove(ids, oldIndex, newIndex));
+    // Same column (non-Complete): final already reflects the live reorder.
+    const targetIds = final[toStatus].map((c) => c.id);
+    const baseIds = baseColumns[toStatus].map((c) => c.id);
+    const changed =
+      targetIds.length !== baseIds.length || targetIds.some((id, i) => id !== baseIds[i]);
+    if (changed) void reorderTasks(targetIds);
   }
 
   return (
-    <div className="board-shell">
+    <div
+      className="board-shell"
+      onClick={(e) => {
+        // A click that didn't land on a card clears the last-viewed mark. Card
+        // clicks set the highlight first and bubble here, where closest('.card')
+        // is truthy → we skip, so the fresh highlight survives.
+        if (!(e.target as HTMLElement).closest('.card')) clearHighlight();
+      }}
+    >
       <NextGoal />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={onDragStart}
+        onDragOver={onDragOver}
         onDragCancel={endDrag}
         onDragEnd={onDragEnd}
       >

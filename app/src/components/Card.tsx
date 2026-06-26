@@ -28,6 +28,22 @@ const KIND_LABEL: Record<Kind, string> = {
   docs: 'Docs',
 };
 
+// Bold the first occurrence of the search query inside a card title. Returns the
+// plain string when there's no query or no match (e.g. a body-/number-only match).
+function renderTitle(title: string, query?: string): React.ReactNode {
+  const q = query?.trim().toLowerCase();
+  if (!q) return title;
+  const idx = title.toLowerCase().indexOf(q);
+  if (idx === -1) return title;
+  return (
+    <>
+      {title.slice(0, idx)}
+      <mark className="title-match">{title.slice(idx, idx + q.length)}</mark>
+      {title.slice(idx + q.length)}
+    </>
+  );
+}
+
 export interface CardData {
   id: string;
   ref: number;
@@ -50,11 +66,13 @@ interface CardViewProps extends React.HTMLAttributes<HTMLDivElement> {
   data: CardData;
   /** rendered inside a DragOverlay (follows the cursor) */
   overlay?: boolean;
+  /** when set, the matching substring of the title is bolded (board search) */
+  titleQuery?: string;
 }
 
 // Presentational card. Forwards a ref so the sortable wrapper can attach it.
 export const CardView = forwardRef<HTMLDivElement, CardViewProps>(function CardView(
-  { data, overlay, className, ...rest },
+  { data, overlay, className, titleQuery, ...rest },
   ref,
 ) {
   const { ref: refNum, title, priority, kind, version, source, doneSubtasks, totalSubtasks, linkCount, reopened } = data;
@@ -66,7 +84,7 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(function CardV
     >
       <span className={`priority-rail ${priority}`} />
 
-      <div className="card-title">{title}</div>
+      <div className="card-title">{renderTitle(title, titleQuery)}</div>
 
       <div className="card-meta">
         {refNum > 0 && <span className="card-ref">#{refNum}</span>}
@@ -104,6 +122,8 @@ export const CardView = forwardRef<HTMLDivElement, CardViewProps>(function CardV
 // Sortable card placed in a column. Clicking selects it (opens TaskDetail).
 export default function Card({ data }: { data: CardData }) {
   const selectTask = useStore((s) => s.selectTask);
+  const highlightedTaskId = useStore((s) => s.highlightedTaskId);
+  const search = useStore((s) => s.search);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: data.id });
@@ -122,6 +142,8 @@ export default function Card({ data }: { data: CardData }) {
       ref={setNodeRef}
       style={style}
       data={data}
+      titleQuery={search}
+      className={data.id === highlightedTaskId ? 'is-highlighted' : undefined}
       onClick={() => selectTask(data.id)}
       {...attributes}
       {...listeners}

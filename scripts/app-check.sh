@@ -13,7 +13,10 @@ if [[ ! -d "$DEST" ]]; then
   exit 0
 fi
 
-installed_epoch="$(stat -f %m "$DEST/Contents/MacOS/app" 2>/dev/null || echo 0)"
+# The executable in Contents/MacOS is named after the bundle (e.g. "vibe-tasks"),
+# not "app" — stat the newest file there so a rename can't silently zero the mtime
+# (the epoch-0 / "1969" bug that made every check report STALE).
+installed_epoch="$(stat -f %m "$DEST/Contents/MacOS/"* 2>/dev/null | sort -rn | head -1 || echo 0)"
 src_epoch="$(git log -1 --format=%ct -- app 2>/dev/null || echo 0)"
 installed_ver="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$DEST/Contents/Info.plist" 2>/dev/null || echo '?')"
 conf_ver="$(grep -m1 '"version"' app/src-tauri/tauri.conf.json | sed -E 's/.*"version" *: *"([^"]+)".*/\1/')"

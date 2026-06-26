@@ -168,10 +168,18 @@ describe('resolveForWrite — writes bootstrap, but never mint from a typed name
     expect(repo.listProjects(db).find(p => p.id === id)!.name).toBe('Brand New');
   });
 
-  it('bootstraps a new repo board from the cwd basename even when other boards exist', () => {
+  // Fail-closed guard (ref 38): once any board exists, an INFERRED cwd name that matches
+  // no board is refused — it is almost always a wrong-directory launch that would silently
+  // fork work onto a phantom board. (A genuine new repo must pass project= / VIBETASKS_PROJECT
+  // or call create_project.)
+  it('REFUSES an inferred (cwd-fallback) name that matches no board when other boards exist', () => {
     repo.createProject(db, { name: 'Other Repo', source: 'you' });
-    const id = repo.resolveForWrite(db, { cwdBase: 'fresh-repo' });
-    expect(repo.listProjects(db).find(p => p.id === id)!.name).toBe('fresh-repo');
+    expect(() => repo.resolveForWrite(db, { cwdBase: 'fresh-repo' }))
+      .toThrow(/inferred from the working directory/i);
+    // error names the inferred string and lists the real boards; mints nothing
+    expect(() => repo.resolveForWrite(db, { cwdBase: 'fresh-repo' })).toThrow(/"fresh-repo"/);
+    expect(() => repo.resolveForWrite(db, { cwdBase: 'fresh-repo' })).toThrow(/Other Repo/);
+    expect(repo.listProjects(db).map(p => p.name)).toEqual(['Other Repo']); // no parallel board
   });
 
   it('REFUSES to mint a board from an explicit/typed name when other boards already exist', () => {
@@ -191,6 +199,84 @@ describe('resolveForWrite — writes bootstrap, but never mint from a typed name
     const before = repo.listProjects(db).length;
     expect(repo.resolveForWrite(db, { explicit: 'Task Manager', cwdBase: 'wt' })).toBe(p.id);
     expect(repo.listProjects(db).length).toBe(before);
+  });
+});
+
+// Fail-closed write guard (ref 38): a cwd-INFERRED name that matches no board must be
+// refused once any board exists — but legitimate writes (explicit project= to an existing
+// board, VIBETASKS_PROJECT-resolved, genuine first-use bootstrap) must NOT be false-rejected.
+describe('resolveForWrite — fail-closed cwd-fallback guard (ref 38)', () => {
+  it('refuses an inferred cwd name beside existing boards, naming it and listing the real ones', () => {
+    repo.createProject(db, { name: 'Task Manager', source: 'you' });
+    let caught: Error | undefined;
+    try { repo.resolveForWrite(db, { cwdBase: 'some-worktree' }); } catch (e) { caught = e as Error; }
+    expect(caught).toBeDefined();
+    expect(caught!.message).toMatch(/refusing to write/i);
+    expect(caught!.message).toContain('"some-worktree"');      // names the resolved string
+    expect(caught!.message).toMatch(/inferred from the working directory/i);
+    expect(caught!.message).toMatch(/project=/);               // demands an explicit project
+    expect(caught!.message).toContain('Task Manager');         // lists existing boards
+    expect(repo.listProjects(db).map(p => p.name)).toEqual(['Task Manager']); // minted nothing
+  });
+
+  it('does NOT false-reject an explicit project= write to an existing board', () => {
+    const p = repo.createProject(db, { name: 'Task Manager', source: 'you' });
+    repo.createProject(db, { name: 'Other', source: 'you' });
+    // Even with a misleading cwd basename, an explicit name to an existing board succeeds.
+    expect(repo.resolveForWrite(db, { explicit: 'Task Manager', cwdBase: 'unrelated-dir' })).toBe(p.id);
+  });
+
+  it('does NOT false-reject a VIBETASKS_PROJECT-resolved write to an existing board', () => {
+    const p = repo.createProject(db, { name: 'My Board', source: 'you' });
+    repo.createProject(db, { name: 'Other', source: 'you' });
+    expect(repo.resolveForWrite(db, { envProject: 'My Board', cwdBase: 'unrelated-dir' })).toBe(p.id);
+  });
+
+  it('still bootstraps the very first board from the cwd basename on an empty DB (zero-config)', () => {
+    const id = repo.resolveForWrite(db, { cwdBase: 'my-app' });
+    expect(repo.listProjects(db).find(p => p.id === id)!.name).toBe('my-app');
+  });
+});
+
+// repo_path auto-fill on creation (ref 63): a board born from a write seeds repo_path
+// from the session cwd. Confirmed, non-destructive: NEVER overwrite an existing value,
+// NEVER let cwd pick which board a write targets, skip uuid/temp dirs.
+describe('createProject / resolveForWrite — repo_path auto-fill (ref 63)', () => {
+  it('seeds repo_path from the cwd when bootstrapping a brand-new cwd-fallback board', () => {
+    const id = repo.resolveForWrite(db, { cwdBase: 'my-app', cwd: '/Users/me/code/my-app' });
+    expect(repo.findProject(db, id)!.repo_path).toBe('/Users/me/code/my-app');
+  });
+
+  it('seeds repo_path when bootstrapping the first board from an explicit name', () => {
+    const id = repo.resolveForWrite(db, { explicit: 'Brand New', cwd: '/Users/me/code/brand-new', cwdBase: 'wt' });
+    expect(repo.findProject(db, id)!.repo_path).toBe('/Users/me/code/brand-new');
+  });
+
+  it('NEVER overwrites an existing board repo_path (confirmed, non-destructive)', () => {
+    const p = repo.createProject(db, { name: 'my-app', source: 'you', repo_path: '/human/set/path' });
+    // A later write that resolves to the same board by cwd must not touch repo_path.
+    const id = repo.resolveForWrite(db, { cwdBase: 'my-app', cwd: '/Users/me/code/my-app' });
+    expect(id).toBe(p.id);
+    expect(repo.findProject(db, id)!.repo_path).toBe('/human/set/path'); // unchanged
+  });
+
+  it('does NOT auto-fill repo_path when the cwd looks like a uuid/temp/worktree dir', () => {
+    const id = repo.resolveForWrite(db, {
+      explicit: 'Worktree Board',
+      cwd: '/tmp/worktrees/2ae15ac6-14c8-48b4-bfe2-b73fdae555fa',
+      cwdBase: 'wt',
+    });
+    expect(repo.findProject(db, id)!.repo_path).toBeNull();
+  });
+
+  it('leaves repo_path NULL when no cwd is supplied', () => {
+    const id = repo.resolveForWrite(db, { explicit: 'No Cwd', cwdBase: 'wt' });
+    expect(repo.findProject(db, id)!.repo_path).toBeNull();
+  });
+
+  it('createProject ignores a blank/whitespace repo_path (stores NULL)', () => {
+    const p = repo.createProject(db, { name: 'Blank', source: 'you', repo_path: '   ' });
+    expect(p.repo_path).toBeNull();
   });
 });
 

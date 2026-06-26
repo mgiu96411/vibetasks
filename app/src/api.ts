@@ -117,3 +117,8 @@ export const startTask = (id: string, terminalApp: string, claudeBin: string) =>
 /** Opens a bare Claude session in the project's repo path — no task, no prompt. */
 export const openClaude = (id: string, terminalApp: string, claudeBin: string) =>
   invoke<string>('open_claude', { id, terminalApp, claudeBin });
+
+/** Given first-class terminal ids, returns the subset that have an installed
+ *  `.app` bundle — used to gray out missing options in the terminal picker. */
+export const detectTerminals = (ids: string[]) =>
+  invoke<string[]>('detect_terminals', { ids });

@@ -6,6 +6,7 @@
 // the store. Polling starts on mount.
 
 import { useEffect, useState } from 'react';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useStore, type Filter, type View } from './store';
 import Board from './components/Board';
 import Sidebar from './components/Sidebar';
@@ -14,6 +15,7 @@ import Notes from './components/Notes';
 import TaskDetail from './components/TaskDetail';
 import NewTaskModal from './components/NewTaskModal';
 import CommandPalette from './components/CommandPalette';
+import SearchBar from './components/SearchBar';
 import Toasts from './components/Toasts';
 import GraphView from './components/GraphView';
 import ResizeHandle from './components/ResizeHandle';
@@ -42,6 +44,7 @@ function TitleBar() {
   const moveProjectToSpace = useStore((s) => s.moveProjectToSpace);
   const setProjectRepoPath = useStore((s) => s.setProjectRepoPath);
   const openClaude = useStore((s) => s.openClaude);
+  const pushToast = useStore((s) => s.pushToast);
 
   const [editingRepoPath, setEditingRepoPath] = useState(false);
   const [repoPathDraft, setRepoPathDraft] = useState('');
@@ -59,6 +62,28 @@ function TitleBar() {
     setRepoPathDraft('');
   }
 
+  // Native macOS folder picker — writes the chosen directory through the same
+  // store setter the text input commits through (validate + persist + refresh).
+  async function pickRepoPath() {
+    if (!active) return;
+    try {
+      const chosen = await open({
+        directory: true,
+        multiple: false,
+        title: 'Choose repo folder',
+        defaultPath: active.repo_path || undefined,
+      });
+      // null = user cancelled; string = a single directory.
+      if (typeof chosen === 'string') {
+        await setProjectRepoPath(active.id, chosen);
+        setEditingRepoPath(false);
+        setRepoPathDraft('');
+      }
+    } catch (e) {
+      pushToast({ kind: 'error', text: String(e) });
+    }
+  }
+
   return (
     <header className="titlebar">
       <span className="project-name">{active?.name ?? 'Vibe Tasks'}</span>
@@ -74,6 +99,8 @@ function TitleBar() {
           </button>
         ))}
       </div>
+
+      <SearchBar />
 
       {active && (
         <select
@@ -110,6 +137,16 @@ function TitleBar() {
           📁
         </button>
       ))}
+
+      {active && (
+        <button
+          className="titlebar-repo-pick-btn"
+          title="Choose repo folder…"
+          onClick={() => void pickRepoPath()}
+        >
+          📂
+        </button>
+      )}
 
       {active && active.repo_path && !editingRepoPath && (
         <button

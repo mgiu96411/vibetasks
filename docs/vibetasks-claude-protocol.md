@@ -61,6 +61,15 @@ name. The directory fallback will *match* an existing board but **refuses to aut
 a uuid-looking worktree/temp dir (set the env, pass `project=`, or `create_project` first) — this
 prevents stray boards named after a session's working directory.
 
+**Writes fail closed on a directory-fallback miss.** When the project was resolved *only* by the
+current-directory name (no `project=`, no `VIBETASKS_PROJECT`) and that name matches no existing
+board *while other boards exist*, write tools (`add_task`, `add_tasks`, `move_task`, …) refuse with
+an error naming the inferred string and listing the real boards — so a mistyped/strayed cwd can
+never silently spawn or target the wrong board. An empty database still bootstraps its first board
+on first use. When a board *is* created by a write, its `repo_path` is seeded from the session's
+working directory if you didn't set one — never overwriting an existing path, and never from a
+uuid/temp dir.
+
 **Reads never create; typed names beside existing boards never create.** Read tools (`get_board`,
 `get_map`, `list_tasks`, `resume`, `get_notes`) never mint a board — an unknown name throws and
 lists the boards that exist, so a guessed/mistyped name can't spawn an empty duplicate. When that

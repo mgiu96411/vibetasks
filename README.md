@@ -38,6 +38,12 @@ catalog of built features, planned features, internal roadmap work, and public-c
 - **Kanban board** — Now / Next / Later / Complete / Dropped, drag-and-drop cards (the dragged
   card follows your cursor across columns), per-column counts, a completion bar on Complete. The
   board scrolls sideways and each column scrolls its own cards when space is tight.
+- **Search & last-viewed highlight** — a titlebar search box (or **⌘F**) filters the board in
+  place by task **title**, **number** (`#N`), or **body**, narrowing within the current
+  All / Mine / Claude filter; the matched text is bolded in card titles. Opening a card also marks
+  it on the board, and the mark **persists after you close the detail window** so you can see what
+  you were just looking at — it moves when you open another card and clears when you click empty
+  board space.
 - **Notes & "Last session" recap** — an auto-saving notes pad per project, plus a read-only, dated recap of where you left off (Claude writes it at wrap-up via `set_recap`).
 - **Multiple projects** — switch in the left rail. Claude-made and hand-made items coexist: a
   **✦** marks Claude's, and an **All / Mine / Claude's** filter narrows everything.
@@ -50,7 +56,7 @@ catalog of built features, planned features, internal roadmap work, and public-c
 - **Adding tasks** — a fast inline **+ Add a task** at the foot of every column, plus a floating **New task** window for full capture (title, column, priority, type, Brief, Details) opened from the titlebar **+ New** button or **⌘N**.
 - **Reference numbers** — every task has a stable `#N` you can use to refer to it ("work on #42"); `list_tasks` (MCP) prints them all.
 - **Versioned archive** — tag completed tasks with a `version` (e.g. `v0.4.0`); the Complete column groups them into collapsible per-release sections (newest open, older collapsed) so it never becomes an endless pile.
-- **Start button** (macOS) — a **▶ Start** button in the task detail panel. Set the repo path once per project (📁 in the sidebar), then one click opens your terminal at that repo with Claude Code already working the task. The card moves to **Now** the moment the launch request is accepted; every outcome surfaces as an in-app toast. **If the card's paths include a committed plan file** (any `…/plans/*.md`), the launch prompt tells the session to execute that existing plan instead of re-planning — so a plan written in one session is run, not re-derived, on the next Start. **Ghostty, Terminal.app, and iTerm2 are all first-class** (each has a real launch recipe); pick the default from the **⚙ Settings** block at the bottom of the sidebar. Choosing **Custom…** lets you point at any other terminal via a best-effort macOS `open` fallback that isn't guaranteed. The Claude binary path is set in that same Settings block (or ⌘K → "Set Claude binary…").
+- **Start button** (macOS) — a **▶ Start** button in the task detail panel. Set the repo path once per project (the **📁** control in the titlebar — type it, or pick it with the **📂** native folder chooser beside it), then one click opens your terminal at that repo with Claude Code already working the task. The card moves to **Now** the moment the launch request is accepted; every outcome surfaces as an in-app toast. **If the card's paths include a committed plan file** (any `…/plans/*.md`), the launch prompt tells the session to execute that existing plan instead of re-planning — so a plan written in one session is run, not re-derived, on the next Start. **Ghostty, Terminal.app, and iTerm2 are all first-class** (each has a real launch recipe); pick the default from the **⚙ Settings** block at the bottom of the sidebar (terminals that aren't installed show greyed-out in the picker). Choosing **Custom…** lets you point at any other terminal via a best-effort macOS `open` fallback that isn't guaranteed. The Claude binary path is set in that same Settings block (or ⌘K → "Set Claude binary…").
 - **Open Claude button** (macOS) — an **Open Claude** button next to the 📁 repo button in the titlebar (shown once the project's repo path is set). Same launch path as Start (and the same Ghostty / Terminal.app / iTerm2 / Custom terminal choice) — a fresh session/tab at the repo with Claude Code — but with **no task, no prompt, and no board change**; just a fresh Claude session in the project.
 - **Graph view** — the whole project as a dependency + subtask graph.
 - **Live sync** — when Claude writes via the MCP, the window updates within ~0.6s, no reload.
@@ -88,7 +94,7 @@ already open).
 > **Platform:** macOS on Apple Silicon (arm64). The launcher, packaging, and `/Applications`
 > install flow are macOS-only, and the prebuilt `.dmg` is `aarch64`.
 
-**Prerequisites:** [Node.js](https://nodejs.org) ≥ 18, the [Rust toolchain](https://rustup.rs)
+**Prerequisites:** [Node.js](https://nodejs.org) ≥ 22 (LTS — see the Node pin note below), the [Rust toolchain](https://rustup.rs)
 (`cargo`, for the Tauri backend), and Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
@@ -118,20 +124,30 @@ non-blocking reminder when a Claude session ends: a board-hygiene nudge (*board-
 cards reflect what was proposed/started/finished?) plus the `app:check` staleness result. It only
 reminds — it never builds, blocks, or edits the board.
 
-### Installing from the `.dmg`
+### Installing from the `.dmg` (convenience path)
 
-`npm run app:build` also produces a disk image at
-`app/src-tauri/target/release/bundle/dmg/Vibe Tasks_<version>_aarch64.dmg`. Open it and drag
-**Vibe Tasks** into **Applications**.
+Building from source (above) is the primary, recommended path. If you'd rather not build, the
+`.dmg` is the convenience option:
 
-The build is **not yet code-signed / notarized**, so Gatekeeper will warn on first open. Either:
+1. Download / open the disk image — `npm run app:build` produces it at
+   `app/src-tauri/target/release/bundle/dmg/Vibe Tasks_<version>_aarch64.dmg`.
+2. Drag **Vibe Tasks** onto **Applications**.
 
-- **Right-click the app → Open** (then confirm) — only needed once, or
-- `xattr -dr com.apple.quarantine "/Applications/Vibe Tasks.app"` to clear the quarantine flag.
+**First launch — getting past Gatekeeper.** This build is **not code-signed or notarized** (there's
+no Apple Developer certificate behind it yet), so on first open macOS shows *"Apple could not verify
+'Vibe Tasks' is free of malware…"* and won't let you open it by double-clicking. Get past it **once**
+with either:
 
-To ship a notarized `.dmg` (no warning), set an Apple **Developer ID** signing identity + an
-app-specific password and run the standard `codesign`/`notarytool`/`stapler` flow on the bundle
-before packaging.
+- **Right-click (Control-click) `Vibe Tasks.app` in Applications → Open**, then click **Open** in the
+  dialog to confirm; or
+- **System Settings → Privacy & Security**, scroll to the message about Vibe Tasks being blocked, and
+  click **Open Anyway** (then confirm).
+
+This is a **one-time** step — macOS remembers your choice and launches the app normally afterward. You
+do **not** need to disable Gatekeeper system-wide, and you shouldn't: leave it on for everything else.
+
+A **signed and notarized** `.dmg` (no Gatekeeper warning at all) is planned once an Apple Developer
+certificate is available, at which point this bypass goes away.
 
 > Your data lives in `~/.vibetasks/vibetasks.db` regardless of where the app is installed — the
 > install location never affects which board you see.
@@ -150,6 +166,8 @@ First launch compiles the Rust backend (~30s); after that it's fast.
 - Click a card to edit it: Brief, Details, priority, code refs, subtasks, and links.
 - Toggle **Board / Graph** in the title bar; filter **All / Mine / Claude's**; press **⌘K** for
   the command palette.
+- **Search** the board from the titlebar box (or **⌘F**) by title, task number, or body — **Esc**
+  or the × clears it. The card you last opened stays highlighted on the board after you close it.
 - Type project notes on the right — notes autosave.
 - Anything Claude does through the MCP appears live.
 

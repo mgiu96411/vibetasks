@@ -10,7 +10,7 @@ use std::sync::Mutex;
 pub fn run() {
     let conn = db::open();
 
-    let mut builder = tauri::Builder::default();
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init());
 
     // Remember the window's size + position across launches (desktop only).
     #[cfg(desktop)]
@@ -54,6 +54,7 @@ pub fn run() {
             commands::set_project_repo_path,
             commands::start_task,
             commands::open_claude,
+            commands::detect_terminals,
             commands::add_task,
             commands::update_task,
             commands::move_task,

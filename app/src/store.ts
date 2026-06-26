@@ -73,7 +73,12 @@ interface State {
   activeProjectId: string | null;
   filter: Filter;
   view: View;
+  /** transient board search query (title / task# / body); NOT persisted */
+  search: string;
   selectedTaskId: string | null;
+  /** the card visually marked on the board as "last viewed"; survives closing
+   *  the detail modal. Separate from selectedTaskId (which drives the modal). */
+  highlightedTaskId: string | null;
   /** whether the floating "New task" modal is open */
   newTaskOpen: boolean;
 
@@ -89,8 +94,10 @@ interface State {
   // ---- view / selection ----
   setFilter: (f: Filter) => void;
   setView: (v: View) => void;
+  setSearch: (q: string) => void;
   setActiveProject: (id: string) => Promise<void>;
   selectTask: (id: string | null) => void;
+  clearHighlight: () => void;
   openNewTask: () => void;
   closeNewTask: () => void;
 
@@ -152,7 +159,9 @@ export const useStore = create<State>((set, get) => ({
   activeProjectId: null,
   filter: lsStr<Filter>(LS.filter, ['all', 'mine', 'claude'], 'all'),
   view: lsStr<View>(LS.view, ['board', 'graph'], 'board'),
+  search: '',
   selectedTaskId: null,
+  highlightedTaskId: null,
   newTaskOpen: false,
   dataVersion: -1,
   pollHandle: null,
@@ -183,7 +192,12 @@ export const useStore = create<State>((set, get) => ({
     localStorage.setItem(LS.view, view);
     set({ view });
   },
-  selectTask: (selectedTaskId) => set({ selectedTaskId }),
+  setSearch: (search) => set({ search }),
+  // Opening a task marks it highlighted too. Closing (id === null) leaves the
+  // highlight in place so the board still shows what you were just viewing.
+  selectTask: (selectedTaskId) =>
+    set(selectedTaskId === null ? { selectedTaskId } : { selectedTaskId, highlightedTaskId: selectedTaskId }),
+  clearHighlight: () => set({ highlightedTaskId: null }),
   openNewTask: () => set({ newTaskOpen: true }),
   closeNewTask: () => set({ newTaskOpen: false }),
 
@@ -383,6 +397,7 @@ export const useStore = create<State>((set, get) => ({
   deleteTask: async (id) => {
     await api.deleteTask(id);
     if (get().selectedTaskId === id) set({ selectedTaskId: null });
+    if (get().highlightedTaskId === id) set({ highlightedTaskId: null });
     await get().refresh();
   },
   setRefs: async (id, paths, symbols) => {

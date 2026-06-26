@@ -192,6 +192,8 @@ migrations, Stop hooks, and ABI recovery in a technical or "Built for reliabilit
 | Duplicate-launch protection | UI cooldown plus a 120-second backend guard reduce accidental double launches. | Built |
 | Empty-details warning | Ask for confirmation before starting a task that has no Details. | Built |
 | Launch settings | Configure terminal application and Claude binary through the command palette. | Built |
+| Repository folder picker | Native macOS folder chooser (📂) for a project's repository path, beside the text field. | Built |
+| Installed-terminal detection | The terminal picker greys out terminals that are not installed. | Built |
 
 The current launch flow confirms that macOS accepted the launch request. It does not yet confirm
 that Claude fully started and connected to the intended task.
@@ -205,6 +207,8 @@ that Claude fully started and connected to the intended task.
 | Task writes | Add, bulk-add, update, move, reorder, delete, scope, subtask, and link operations. | Built |
 | Project management | List/create/rename/delete projects, reassign tasks between projects, and manage spaces. | Built |
 | Board identity guards | Read tools never create a board; typed write targets cannot silently create a duplicate beside existing boards. | Built |
+| Fail-closed directory writes | Writes refuse when the project was inferred from the working directory, matches no board, and other boards exist. | Built |
+| Repository path auto-fill | A newly created board seeds its repository path from the session directory, never overwriting an existing path. | Built |
 | Project repair | Rename a board, move all tasks between boards, and guard non-empty deletion. | Built |
 | Reopened awareness | Compact reads surface tasks moved back out of Complete. | Built |
 | Token-focused reads | Now carries capped task detail; map and resume are progressively disclosed and bounded. | Built |
@@ -244,7 +248,6 @@ These items come from active board cards. They are roadmap inputs, not dated com
 | Signed and notarized macOS release | Install the DMG without Gatekeeper workarounds. | `#28`, Next |
 | npm-distributed MCP | Install the MCP package without cloning and building the repository locally. | `#14`, Later |
 | First-run terminal setup | Choose a terminal once and use a tested launch recipe for that terminal. | `#62`, Later |
-| Native repository folder picker | Replace manual path typing with a macOS folder chooser. | `#66`, Later |
 | Verified launch handshake | Confirm that Claude actually started, rather than only confirming that macOS accepted the launch request. | `#65`, Later |
 
 ### Richer task interaction
@@ -261,7 +264,6 @@ These items come from active board cards. They are roadmap inputs, not dated com
 | Planned feature | Website-friendly description | Board |
 | --- | --- | --- |
 | Session notifications | Notify when an agent session needs input and deep-link back to the terminal. | `#17`, Next, exploratory |
-| Repository auto-detection | Safely suggest or fill a project's repository path from session context. | `#63`, Later |
 | Start from the card | Explore a hover Start affordance without interfering with drag interactions. | `#64`, Later |
 
 ### Phone and remote access
@@ -276,10 +278,7 @@ These board items matter to quality and distribution but are usually not website
 
 | Work item | Why it matters | Board |
 | --- | --- | --- |
-| Fail-closed wrong-board writes | Strengthen board identity protection when a write falls back to a folder-derived project. | `#38`, Later |
 | One-Node MCP bootstrap | Make every launch path use one pinned Node runtime so ABI drift cannot return. | `#77`, Later |
-| Pin development/test Node | Stop tests and the runtime rebuilding `better-sqlite3` for different Node ABIs. | `#60`, Later |
-| Version synchronization | Align root, app, MCP, Cargo, and lockfile versions with the Tauri app version. | `#68`, Next |
 | Public-history decision | Decide whether to publish current history or create a clean public branch. | `#48`, Next |
 | Schema parity rule | Keep `app/src-tauri/schema.sql` byte-identical to `shared/src/schema.sql`. | `#15`, standing rule |
 | Website domain | Purchase and configure the eventual landing-page domain. | `#8`, Next |
@@ -293,7 +292,6 @@ These board items matter to quality and distribution but are usually not website
   single-database by design.
 - **No launch completion handshake.** Start confirms request acceptance, not a fully running Claude
   session.
-- **No native folder picker yet.** Repository paths are entered as text and validated.
 - **No session-needs-input notifications yet.**
 - **No card conversation/thread model yet.**
 - **No npm-hosted public MCP package yet.**

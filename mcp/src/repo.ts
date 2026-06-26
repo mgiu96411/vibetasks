@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
+import { basename } from 'node:path';
 import type { Space, Project, Task, Todo, Note, TaskCard, MapView, Source, Status, Priority, Kind, LinkType } from 'shared';
 
 const newId = (): string => randomUUID();
@@ -87,15 +88,19 @@ export function moveProjectToSpace(db: Database, project_id: string, space_id: s
     .run(space_id, nowIso(), project_id);
 }
 
-export function createProject(db: Database, i: { name: string; color?: string; source: Source; space_id?: string }): Project {
+export function createProject(db: Database, i: { name: string; color?: string; source: Source; space_id?: string; repo_path?: string | null }): Project {
   const existing = oneProjectByName(db, i.name);
   if (existing) return existing;
   const spaceId = i.space_id ?? DEFAULT_SPACE_ID;
   requireSpace(db, spaceId);
   const now = nowIso(); const id = newId();
   const position = nextPosition(db, 'SELECT MAX(position) m FROM project', []);
-  db.prepare(`INSERT INTO project(id,name,color,source,space_id,position,created_at,updated_at)
-    VALUES(?,?,?,?,?,?,?,?)`).run(id, i.name, i.color ?? '#7c8cff', i.source, spaceId, position, now, now);
+  // repo_path is the directory the Start button launches Claude in. It is normally
+  // human-set, but a fresh board born from a write may seed it from the session cwd
+  // (auto-fill; see resolveForWrite). A blank/whitespace value stays NULL.
+  const repoPath = i.repo_path?.trim() ? i.repo_path.trim() : null;
+  db.prepare(`INSERT INTO project(id,name,color,source,space_id,repo_path,position,created_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?)`).run(id, i.name, i.color ?? '#7c8cff', i.source, spaceId, repoPath, position, now, now);
   return db.prepare('SELECT * FROM project WHERE id=?').get(id) as Project;
 }
 export const listProjects = (db: Database): Project[] =>
@@ -109,9 +114,11 @@ export function renameProject(db: Database, id: string, name: string): void {
 }
 export const deleteProject = (db: Database, id: string): void => { db.prepare('DELETE FROM project WHERE id=?').run(id); };
 
-export function ensureProject(db: Database, name: string, source: Source = 'claude'): Project {
+export function ensureProject(db: Database, name: string, source: Source = 'claude', repo_path?: string | null): Project {
   const found = oneProjectByName(db, name);
-  return found ?? createProject(db, { name, source });
+  // Only a genuinely NEW board takes the auto-filled repo_path; an existing board is
+  // never touched (never overwrite a human-set, or already-blank, repo_path).
+  return found ?? createProject(db, { name, source, repo_path });
 }
 export const findProjectByName = (db: Database, name: string): Project | undefined =>
   oneProjectByName(db, name);
@@ -119,7 +126,10 @@ export const findProjectByName = (db: Database, name: string): Project | undefin
 // A worktree/temp directory name (e.g. a session uuid) leaking in as a project name.
 const UUIDISH = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type ResolveOpts = { explicit?: string; envProject?: string; cwdBase: string };
+// `cwd` is the full session working directory (process.cwd()); `cwdBase` is its
+// basename — the zero-config board name. Splitting them lets a created board record
+// `repo_path` from the real path while board *resolution* still keys off the basename.
+type ResolveOpts = { explicit?: string; envProject?: string; cwdBase: string; cwd?: string };
 
 // Error body for a name that matched no board — always lists the boards that DO exist,
 // so the next call targets a real one by its exact name instead of re-inventing a typo
@@ -147,11 +157,24 @@ export function resolveForRead(db: Database, opts: ResolveOpts): string {
   );
 }
 
+// Auto-fill the repo_path of a board being CREATED by a write from the session cwd —
+// but only when it is a real directory path, never a uuid/temp/worktree dir (same
+// signal the cwd basename guard uses). Returns undefined (→ NULL) otherwise. This is a
+// non-destructive suggestion for a brand-new board; resolveForWrite never overwrites an
+// existing board's repo_path, and the cwd here is NEVER used to pick which board a
+// write targets (board resolution keys off the name only — the ref 38 footgun).
+function autoRepoPath(cwd?: string): string | undefined {
+  const path = cwd?.trim();
+  if (!path) return undefined;
+  if (UUIDISH.test(basename(path))) return undefined;
+  return path;
+}
+
 // WRITE resolver — used by write tools (add_task(s), set_notes, set_recap). It bootstraps
-// the first board of a fresh repo, but refuses to mint a parallel board from a TYPED name
-// (explicit arg / env) whenever any board already exists — that typed-name-beside-existing
-// case is the duplicate-board bug. New boards are made deliberately via create_project.
-// Priority: explicit arg, then VIBETASKS_PROJECT env, then the cwd basename.
+// the first board of a fresh install, but refuses to mint a parallel board from a TYPED
+// name (explicit arg / env) whenever any board already exists — that typed-name-beside-
+// existing case is the duplicate-board bug. New boards are made deliberately via
+// create_project. Priority: explicit arg, then VIBETASKS_PROJECT env, then the cwd basename.
 export function resolveForWrite(db: Database, opts: ResolveOpts): string {
   const intentional = opts.explicit?.trim() || opts.envProject?.trim();
   if (intentional) {
@@ -167,9 +190,10 @@ export function resolveForWrite(db: Database, opts: ResolveOpts): string {
           'create_project to make a genuinely new one.',
       );
     }
-    return ensureProject(db, intentional, 'claude').id;
+    // First board of a fresh install, named intentionally — seed repo_path from the cwd.
+    return ensureProject(db, intentional, 'claude', autoRepoPath(opts.cwd)).id;
   }
-  // cwd fallback — zero-config "each repo maps to its own board" bootstrap.
+  // cwd fallback — the project name was INFERRED from the working directory, not typed.
   const existing = findProjectByName(db, opts.cwdBase);
   if (existing) return existing.id;
   if (UUIDISH.test(opts.cwdBase)) {
@@ -179,7 +203,22 @@ export function resolveForWrite(db: Database, opts: ResolveOpts): string {
         `server env, pass project="<name>" on the call, or call create_project first.`,
     );
   }
-  return ensureProject(db, opts.cwdBase, 'claude').id;
+  // Fail-closed (ref 38): an inferred cwd name that matches NO board is only safe to mint
+  // when the DB is empty (genuine zero-config first use). Beside any existing board it is
+  // almost always a wrong-directory launch that would silently fork work onto a phantom
+  // board — refuse with a message that NAMES the inferred string and demands an explicit
+  // project=. (A typed name takes the `intentional` branch above; this guards only the
+  // working-directory fallback.)
+  if (listProjects(db).length > 0) {
+    throw new Error(
+      `Vibe Tasks: refusing to write — project "${opts.cwdBase}" was inferred from the working ` +
+        `directory and no such board exists. Pass project="<exact name>" explicitly (or set ` +
+        `VIBETASKS_PROJECT), or call create_project to start a new board on purpose. ` +
+        `Existing boards: ${listProjects(db).map(p => `"${p.name}"`).join(', ')}.`,
+    );
+  }
+  // Genuine zero-config bootstrap of a fresh install — seed repo_path from the cwd.
+  return ensureProject(db, opts.cwdBase, 'claude', autoRepoPath(opts.cwd)).id;
 }
 
 // Back-compat alias. The MCP read/write tools call resolveForRead/resolveForWrite

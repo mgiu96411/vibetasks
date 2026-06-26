@@ -131,6 +131,7 @@ function resolveOpts(parsed: ParsedArgs, cwd: string, env: NodeJS.ProcessEnv) {
     explicit: flag(parsed, 'project'),
     envProject: env.VIBETASKS_PROJECT,
     cwdBase: basename(cwd),
+    cwd,
   };
 }
 

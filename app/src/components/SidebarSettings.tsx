@@ -3,7 +3,7 @@
 // Both persist to localStorage via the store setters — the same values the
 // Command Palette settings commands read/write.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   TERMINALS,
   getTerminalApp,
@@ -12,6 +12,7 @@ import {
   getClaudeBin,
   setClaudeBin,
 } from '../store';
+import { detectTerminals } from '../api';
 
 const CUSTOM = '__custom__';
 
@@ -24,6 +25,24 @@ export default function SidebarSettings() {
   const [customMode, setCustomMode] = useState(initialCustom);
   const [customDraft, setCustomDraft] = useState(initialCustom ? initial : '');
   const [claudeBin, setClaudeBinDraft] = useState(getClaudeBin());
+  // null until probed; then the set of first-class terminal ids that are
+  // actually installed. Used to gray out missing options.
+  const [installed, setInstalled] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void detectTerminals(TERMINALS.map((t) => t.id))
+      .then((ids) => {
+        if (alive) setInstalled(new Set(ids));
+      })
+      .catch(() => {
+        // On failure, leave `installed` null so nothing is grayed out
+        // (fail-open — never block a working terminal behind a probe error).
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   function onSelectChange(v: string) {
     if (v === CUSTOM) {
@@ -68,14 +87,29 @@ export default function SidebarSettings() {
               value={selectValue}
               onChange={(e) => onSelectChange(e.target.value)}
             >
-              {TERMINALS.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
+              {TERMINALS.map((t) => {
+                // `installed === null` means the probe hasn't resolved (or
+                // failed) — show everything enabled. Once probed, gray out
+                // any terminal whose .app wasn't found, but never disable the
+                // currently-selected one (keep selection/persistence intact).
+                const missing =
+                  installed !== null && !installed.has(t.id) && t.id !== terminal;
+                return (
+                  <option key={t.id} value={t.id} disabled={missing}>
+                    {t.label}
+                    {missing ? ' (not installed)' : ''}
+                  </option>
+                );
+              })}
               <option value={CUSTOM}>Custom…</option>
             </select>
           </label>
+
+          {!customMode && installed !== null && !installed.has(terminal) && (
+            <span className="settings-note settings-warn">
+              {terminal} isn’t installed — Start may fail.
+            </span>
+          )}
 
           {customMode && (
             <input

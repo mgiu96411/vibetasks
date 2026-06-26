@@ -118,6 +118,44 @@ button {
   color: var(--text);
 }
 
+/* Titlebar search box */
+.titlebar-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3px 8px;
+}
+.titlebar-search-icon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.titlebar-search-input {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font-size: 12px;
+  width: 160px;
+  outline: none;
+}
+.titlebar-search-input::placeholder {
+  color: var(--muted);
+}
+.titlebar-search-clear {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.titlebar-search-clear:hover {
+  color: var(--text);
+}
+
 /* Board / Graph toggle */
 .viewtoggle {
   display: inline-flex;
@@ -221,6 +259,22 @@ button {
   opacity: 1;
   border-color: var(--done);
   box-shadow: 0 0 0 1px rgba(93, 219, 158, 0.25);
+}
+.titlebar-repo-pick-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--faint);
+  font-size: 13px;
+  padding: 4px 8px;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0.55;
+}
+.titlebar-repo-pick-btn:hover {
+  opacity: 1;
+  border-color: var(--border);
+  background: var(--bg-2);
 }
 .titlebar-repo-input {
   background: var(--bg-2);
@@ -571,6 +625,14 @@ button {
   outline: none;
   border-color: var(--accent);
 }
+.settings-note {
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.3;
+}
+.settings-warn {
+  color: var(--danger, #e5484d);
+}
 
 /* ----------------------------------------------------------------------------
    Center — board / graph region
@@ -899,6 +961,19 @@ button {
 }
 .card:hover {
   border-color: var(--accent-soft);
+}
+/* Last-viewed mark: persists after the detail modal closes; distinct from hover. */
+.card.is-highlighted {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+/* Board-search: the matched substring of a card title. */
+.card-title .title-match {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 3px;
+  padding: 0 1px;
+  font-weight: 700;
 }
 .card .priority-rail {
   position: absolute;

@@ -10,6 +10,7 @@ export function registerTools(s: McpServer, db: Database) {
     explicit: name,
     envProject: process.env.VIBETASKS_PROJECT,
     cwdBase: basename(process.cwd()),
+    cwd: process.cwd(),
   });
   // Reads never create a board (a miss throws, listing existing boards); writes may
   // bootstrap a fresh repo but won't mint a parallel board from a typed name. See repo.ts.

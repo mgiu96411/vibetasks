@@ -1,13 +1,14 @@
 {
   "name": "vibe-tasks",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local-first desktop task manager and Claude Code MCP companion",
   "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",
+  "engines": { "node": ">=22" },
   "workspaces": ["shared", "mcp", "app"],
   "scripts": {
     "mcp:build": "npm -w mcp run build",
-    "mcp:test": "npm -w mcp run test",
+    "mcp:test": "zsh scripts/run-under-node22.sh npm -w mcp run test",
     "vibetasks": "npm -w mcp run cli --",
     "app": "npm -w app run tauri dev",
     "app:build": "npm -w app run tauri build",

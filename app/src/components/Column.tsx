@@ -95,6 +95,17 @@ export default function Column({ status, name, cards, completion }: ColumnProps)
     });
   }
 
+  // Cards actually rendered right now. Collapsed version sections render no cards,
+  // so the SortableContext must list ONLY the visible ones — otherwise dnd-kit
+  // measures phantom nodes for collapsed cards and drops onto the Complete column
+  // resolve to a non-existent target and snap back.
+  const visibleIds =
+    versioned && groups
+      ? groups
+          .filter((g, i) => !isCollapsed(g.version, i === 0 && g.version !== ''))
+          .flatMap((g) => g.cards.map((c) => c.id))
+      : cards.map((c) => c.id);
+
   return (
     <div className="column" data-status={status}>
       <div className="column-header">
@@ -108,7 +119,7 @@ export default function Column({ status, name, cards, completion }: ColumnProps)
         </div>
       )}
 
-      <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={visibleIds} strategy={verticalListSortingStrategy}>
         <div className="column-body" ref={setNodeRef}>
           {versioned && groups
             ? groups.map((g, i) => {
