@@ -20,7 +20,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  pointerWithin,
   closestCorners,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -39,6 +41,18 @@ const COLUMNS: { status: Status; name: string }[] = [
   { status: 'complete', name: 'Complete' },
   { status: 'dropped', name: 'Dropped' },
 ];
+
+// Pointer-first collision detection. `closestCorners` compares the dragged
+// card's corners (a ~220px-wide rect that straddles 2-3 columns at once)
+// against every droppable's corners, so a corner-distance tie can resolve to
+// the wrong neighbour — which is why dropping into some columns (Next/Complete)
+// silently failed. `pointerWithin` keys only off the cursor point, so the column
+// the pointer is actually over always wins; we fall back to corner distance only
+// when the pointer is outside every droppable (e.g. dragging past the board edge).
+const collisionDetection: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args);
+  return pointer.length > 0 ? pointer : closestCorners(args);
+};
 
 function matchesFilter(task: Task, filter: Filter): boolean {
   if (filter === 'mine') return task.source === 'you';
@@ -289,7 +303,7 @@ export default function Board() {
       <NextGoal />
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragCancel={endDrag}

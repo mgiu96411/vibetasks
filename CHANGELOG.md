@@ -2,6 +2,15 @@
 
 Human-readable list of what changed in each release of Vibe Tasks.
 
+## v1.2.0 — 2026-06-27
+
+### Added
+- **Project Guardrails** — per-project standing rules pinned at the top of the right column and surfaced to Claude on every board read, so the rules ride along automatically. Numbered, inline-editable rows with length caps; readable and writable over MCP (`get_guardrails` / `set_guardrails`).
+
+### Fixed
+- **The window reliably remembers its size and position** across launches, including multi-monitor setups that mix Retina and standard displays — a window last used on a 2× display no longer reopens half-size on a 1× display.
+- **No launch-size flash** — the window now opens straight at your last size and position instead of briefly appearing at the default size and snapping into place.
+
 ## v1.1.0 — 2026-06-26
 
 ### Added

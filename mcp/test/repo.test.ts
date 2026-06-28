@@ -280,6 +280,51 @@ describe('createProject / resolveForWrite — repo_path auto-fill (ref 63)', () 
   });
 });
 
+// create_project auto-fill (user request): a board created from a Claude Code session
+// must seed its repo_path from that session's working directory — exactly what the
+// create_project MCP tool does via `repo_path ?? autoRepoPath(process.cwd())`. autoRepoPath
+// is the same non-destructive cwd guard the write-bootstrap path uses (ref 63): real path
+// passes through, uuid/temp/worktree dirs and blanks become undefined (→ NULL).
+describe('autoRepoPath — create_project session-cwd auto-fill', () => {
+  it('returns a real directory path unchanged', () => {
+    expect(repo.autoRepoPath('/Users/me/code/app')).toBe('/Users/me/code/app');
+  });
+
+  it('trims surrounding whitespace from a real path', () => {
+    expect(repo.autoRepoPath('  /Users/me/code/app  ')).toBe('/Users/me/code/app');
+  });
+
+  it('returns undefined for a uuid/worktree dir', () => {
+    expect(repo.autoRepoPath('/tmp/worktrees/2ae15ac6-14c8-48b4-bfe2-b73fdae555fa')).toBeUndefined();
+  });
+
+  it('returns undefined for a blank or missing cwd', () => {
+    expect(repo.autoRepoPath('   ')).toBeUndefined();
+    expect(repo.autoRepoPath(undefined)).toBeUndefined();
+  });
+
+  it('createProject stores the session cwd when given an auto-filled repo_path (tool wiring)', () => {
+    const cwd = '/Users/me/code/from-session';
+    const p = repo.createProject(db, {
+      name: 'From Session',
+      source: 'claude',
+      repo_path: repo.autoRepoPath(cwd),
+    });
+    expect(p.repo_path).toBe(cwd);
+  });
+
+  it('an explicit repo_path still wins over the session cwd (?? short-circuit)', () => {
+    const explicit = '/human/picked/path';
+    const cwd = '/Users/me/code/from-session';
+    const p = repo.createProject(db, {
+      name: 'Explicit Wins',
+      source: 'claude',
+      repo_path: explicit ?? repo.autoRepoPath(cwd),
+    });
+    expect(p.repo_path).toBe(explicit);
+  });
+});
+
 describe('project repair (rename / reassign / delete)', () => {
   it('findProject matches by id or by exact name', () => {
     const p = repo.createProject(db, { name: 'Acme App', source: 'you' });
@@ -712,7 +757,7 @@ describe('migration: 3-column → 5-column rebuild', () => {
           'Finished projects',
           'Open Sourcer',
         ]);
-      expect(migrated.pragma('user_version', { simple: true })).toBe(10);
+      expect(migrated.pragma('user_version', { simple: true })).toBe(11);
       migrated.close();
     } finally {
       cleanup();
@@ -750,7 +795,7 @@ describe('migration: 3-column → 5-column rebuild', () => {
       expect((migrated.prepare('SELECT ref FROM task WHERE id=?').get('t') as any).ref).toBe(1);
       expect((migrated.prepare('SELECT space_id FROM project WHERE id=?').get('p') as any).space_id)
         .toBe(repo.DEFAULT_SPACE_ID);
-      expect(migrated.pragma('user_version', { simple: true })).toBe(10);
+      expect(migrated.pragma('user_version', { simple: true })).toBe(11);
       migrated.close();
     } finally {
       cleanup();
@@ -785,9 +830,19 @@ describe('migration v8: project.repo_path', () => {
       const row = migrated.prepare('SELECT id, repo_path FROM project WHERE id=?').get('p') as any;
       expect(row.id).toBe('p');
       expect(row.repo_path).toBeNull();
-      expect(migrated.pragma('user_version', { simple: true })).toBe(10);
+      expect(migrated.pragma('user_version', { simple: true })).toBe(11);
       migrated.close();
     } finally { cleanup(); }
+  });
+
+});
+
+describe('migration v11: note.guardrails', () => {
+  it('adds the guardrails column to the note table', () => {
+    const db = openDb(':memory:');
+    const cols = (db.prepare('PRAGMA table_info(note)').all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toContain('guardrails');
+    expect(db.pragma('user_version', { simple: true })).toBe(11);
   });
 });
 
@@ -841,5 +896,45 @@ describe('ref (reference number)', () => {
     expect(list.map((t) => t.ref)).toEqual([a.ref, b.ref]);
     expect(list[0]).toMatchObject({ id: a.id, title: 'A', status: 'now' });
     expect(list[1]).toMatchObject({ id: b.id, title: 'B', status: 'later' });
+  });
+});
+
+describe('guardrails', () => {
+  it('stores, normalizes (trim/drop-empty/dedupe), and reads back', () => {
+    const p = repo.createProject(db, { name: 'G', source: 'you' });
+    const out = repo.setGuardrails(db, p.id, ['  rule one  ', '', 'rule one', 'rule two']);
+    expect(out).toEqual(['rule one', 'rule two']);
+    expect(repo.getGuardrails(db, p.id)).toEqual(['rule one', 'rule two']);
+  });
+
+  it('rejects too many items', () => {
+    const p = repo.createProject(db, { name: 'G2', source: 'you' });
+    const many = Array.from({ length: 21 }, (_, i) => `rule ${i}`);
+    expect(() => repo.setGuardrails(db, p.id, many)).toThrow(/\b20\b/);
+  });
+
+  it('rejects an over-long item', () => {
+    const p = repo.createProject(db, { name: 'G3', source: 'you' });
+    expect(() => repo.setGuardrails(db, p.id, ['x'.repeat(201)])).toThrow(/200/);
+  });
+
+  it('rejects when total chars exceed the cap', () => {
+    const p = repo.createProject(db, { name: 'G4', source: 'you' });
+    const items = Array.from({ length: 20 }, (_, i) => String(i).padStart(3, '0') + 'y'.repeat(197)); // 20 unique 200-char items → 4000 > 2400
+    expect(() => repo.setGuardrails(db, p.id, items)).toThrow(/2400/);
+  });
+
+  it('getBoard includes guardrails only when non-empty', () => {
+    const p = repo.createProject(db, { name: 'G5', source: 'you' });
+    expect(repo.getBoard(db, p.id).guardrails).toBeUndefined();
+    repo.setGuardrails(db, p.id, ['no competitor data']);
+    expect(repo.getBoard(db, p.id).guardrails).toEqual(['no competitor data']);
+  });
+
+  it('resume includes guardrails only when set, without changing the empty key set', () => {
+    const p = repo.createProject(db, { name: 'G6', source: 'you' });
+    expect(Object.keys(repo.resume(db, p.id))).not.toContain('guardrails');
+    repo.setGuardrails(db, p.id, ['ship small PRs']);
+    expect(repo.resume(db, p.id).guardrails).toEqual(['ship small PRs']);
   });
 });

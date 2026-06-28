@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Vibe Tasks",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "identifier": "com.vibetasks.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -10,15 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Vibe Tasks",
-        "width": 1280,
-        "height": 820,
-        "minWidth": 960,
-        "minHeight": 600
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

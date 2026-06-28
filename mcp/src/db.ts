@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 const SCHEMA = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '../../shared/src/schema.sql'), 'utf8');
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 // One-time migrations, gated by PRAGMA user_version (mirrored in
 // app/src-tauri/src/db.rs — keep the two in sync):
@@ -22,6 +22,8 @@ const SCHEMA_VERSION = 10;
 //   v8: add project.repo_path (where the Start button launches Claude; human-set).
 //   v9: switch ref from global counter to per-project counter — re-number all
 //       existing tasks 1..n within each project ordered by creation time.
+//   v10: goals column on note (JSON milestone + subgoals + following_goal).
+//   v11: guardrails column on note (JSON array of short inviolable rules).
 function migrate(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version >= SCHEMA_VERSION) return;
@@ -144,6 +146,12 @@ function migrate(db: Database.Database): void {
   const noteCols2 = (db.prepare('PRAGMA table_info(note)').all() as Array<{ name: string }>).map((c) => c.name);
   if (!noteCols2.includes('goals')) {
     db.exec('ALTER TABLE note ADD COLUMN goals TEXT DEFAULT NULL;');
+  }
+
+  // v11: guardrails column on note (JSON array of short inviolable rules).
+  const noteCols3 = (db.prepare('PRAGMA table_info(note)').all() as Array<{ name: string }>).map((c) => c.name);
+  if (!noteCols3.includes('guardrails')) {
+    db.exec('ALTER TABLE note ADD COLUMN guardrails TEXT DEFAULT NULL;');
   }
 
   db.pragma(`user_version = ${SCHEMA_VERSION}`);

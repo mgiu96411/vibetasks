@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS note (
   project_id TEXT PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
   body TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL,
   recap TEXT NOT NULL DEFAULT '', recap_at TEXT,
-  goals TEXT DEFAULT NULL
+  goals TEXT DEFAULT NULL, guardrails TEXT DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_task_project ON task(project_id, status, position);
 CREATE INDEX IF NOT EXISTS idx_todo_project ON todo(project_id, position);

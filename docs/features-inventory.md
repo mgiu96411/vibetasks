@@ -157,6 +157,8 @@ migrations, Stop hooks, and ABI recovery in a technical or "Built for reliabilit
 | Default organization | New databases seed Current projects, Finished projects, and Open Sourcer. | Built |
 | Persistent workspace state | Last project, view, filter, panel widths, and window geometry persist locally. | Built |
 | Off-screen recovery | Restored windows are clamped and recentered when monitor layouts change. | Built |
+| Flash-free launch | Window opens hidden and is revealed only after it is sized + placed (no launch-size flash). | Built |
+| Reflowing panels | Side panels shrink proportionally on narrow windows so the center board keeps usable width. | Built |
 
 ### Graph and navigation
 
@@ -176,6 +178,7 @@ migrations, Stop hooks, and ABI recovery in a technical or "Built for reliabilit
 | Project notes | Per-project freeform notes with debounced autosave. | Built |
 | Last session recap | Separate, dated, read-only recap shown above Notes and written through MCP. | Built |
 | Live MCP refresh | The app polls SQLite `data_version` and refreshes when another process writes. | Built |
+| Project Guardrails | A Guardrails panel (top of right column) holds up to 20 standing project rules (≤ 200 chars each, ≤ 2 400 chars total). Read with `get_guardrails`; replace with `set_guardrails`. Auto-injected as a `guardrails` array into `get_board`/`resume` when non-empty; no token cost when unset. | Built |
 | Optimistic movement | Task and space reordering update immediately before the backend refresh completes. | Built |
 | Toast feedback | Launch success, information, and persistent error messages appear in-app. | Built |
 
@@ -208,7 +211,7 @@ that Claude fully started and connected to the intended task.
 | Project management | List/create/rename/delete projects, reassign tasks between projects, and manage spaces. | Built |
 | Board identity guards | Read tools never create a board; typed write targets cannot silently create a duplicate beside existing boards. | Built |
 | Fail-closed directory writes | Writes refuse when the project was inferred from the working directory, matches no board, and other boards exist. | Built |
-| Repository path auto-fill | A newly created board seeds its repository path from the session directory, never overwriting an existing path. | Built |
+| Repository path auto-fill | A newly created board seeds its repository path from the session directory — both write-bootstrapped boards and ones made with `create_project` — never overwriting an existing path. | Built |
 | Project repair | Rename a board, move all tasks between boards, and guard non-empty deletion. | Built |
 | Reopened awareness | Compact reads surface tasks moved back out of Complete. | Built |
 | Token-focused reads | Now carries capped task detail; map and resume are progressively disclosed and bounded. | Built |

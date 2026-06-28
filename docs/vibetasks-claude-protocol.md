@@ -66,9 +66,10 @@ current-directory name (no `project=`, no `VIBETASKS_PROJECT`) and that name mat
 board *while other boards exist*, write tools (`add_task`, `add_tasks`, `move_task`, …) refuse with
 an error naming the inferred string and listing the real boards — so a mistyped/strayed cwd can
 never silently spawn or target the wrong board. An empty database still bootstraps its first board
-on first use. When a board *is* created by a write, its `repo_path` is seeded from the session's
-working directory if you didn't set one — never overwriting an existing path, and never from a
-uuid/temp dir.
+on first use. When a board *is* created — whether bootstrapped by a write or made explicitly with
+`create_project` — its `repo_path` is seeded from the session's working directory if you didn't set
+one, so a board created from a Claude Code session keeps that session's path for the Start button —
+never overwriting an existing path, and never from a uuid/temp dir.
 
 **Reads never create; typed names beside existing boards never create.** Read tools (`get_board`,
 `get_map`, `list_tasks`, `resume`, `get_notes`) never mint a board — an unknown name throws and
@@ -89,8 +90,9 @@ inside a project. New databases seed **Current projects**, **Finished projects**
 - `create_space(name)` / `rename_space(space,name)` — manage user-defined sections.
 - `move_project_to_space(project,space)` — move a board without changing any tasks.
 - `delete_space(space)` — delete an empty space only; the default Current space is protected.
-- `create_project(name,color?,space?)` — create directly in a named/id space, or omit `space` to
-  use Current projects.
+- `create_project(name,color?,space?,repo_path?)` — create directly in a named/id space, or omit
+  `space` to use Current projects. `repo_path` (the Start-button launch dir) auto-fills from the
+  session's working directory unless you pass one; a uuid/temp/worktree cwd is skipped (left blank).
 
 Space and project arguments accept an exact id or exact name where documented. Do not infer
 project lifecycle from task columns: moving a project to Finished projects is an organizational
@@ -311,6 +313,18 @@ explicit name/id (not the working-directory default).
 - **Capture your own suggestions as cards** — see *"Populate & keep the board current"* above: every
   proposal/brainstorm/plan you put real thought into lands on the board (the right column) before
   you finish narrating it, and moves across columns as the work moves. Board-over-chat.
+
+## Project Guardrails
+
+**Guardrails** are a per-project list of inviolable standing rules — present-tense facts or constraints Claude should treat as always true for this project.
+
+- **Read:** `get_guardrails(project)` — returns the current list.
+- **Set:** `set_guardrails(project, rules[])` — replaces the entire list atomically.
+- **Auto-injection:** when non-empty, the list appears as a `guardrails` array in `get_board` and `resume` output. When empty, the field is absent and costs zero tokens.
+- **Caps (hard-rejected at the write layer):** max **20** rules, **≤ 200 chars** per rule, **≤ 2 400 chars** total.
+- **Distinct from:** Notes (freeform scratch), Goal (forward-looking), Last session/recap (backward-looking). Guardrails are standing present-tense rules, not session summaries or goals.
+
+**Migration guidance — stale `kind=rule` cards in Now.** If you see a never-completing `kind=rule` card sitting in the **Now** column that is really a standing project rule (not a task with a deliverable), **offer to move its text into Guardrails** (`set_guardrails`) and then **Drop the card** with a one-line note. Never bulk-sweep rule cards automatically — offer and confirm for each one.
 
 ## The reopened rule
 

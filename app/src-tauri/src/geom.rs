@@ -80,9 +80,51 @@ pub fn corrected_window_rect(win: Rect, monitors: &[Rect]) -> Option<Rect> {
     Some(Rect::new(x, y, w, h))
 }
 
+/// Scale factor of the monitor whose physical rect contains `(px, py)`
+/// (physical px, top-left origin), or `None` if the point is on no monitor.
+///
+/// Used to convert a saved physical window frame back into logical points: the
+/// frame is divided by the scale of the monitor that owned it so it can be
+/// restored with `LogicalSize`/`LogicalPosition`, which stay stable across a
+/// scale-factor boundary (see `restore_geometry_from_disk` in `lib.rs`).
+pub fn scale_at_point(px: i32, py: i32, monitors: &[(Rect, f64)]) -> Option<f64> {
+    monitors.iter().find_map(|(r, scale)| {
+        if px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h {
+            Some(*scale)
+        } else {
+            None
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Mixed-DPI layout: 1x primary, 2x retina to its left, 1x panel to the right
+    // (physical px, top-left origin — matches Tauri monitor coords).
+    fn mixed_dpi() -> Vec<(Rect, f64)> {
+        vec![
+            (Rect::new(0, 0, 2560, 1440), 1.0),       // primary 1x
+            (Rect::new(-3456, 2060, 3456, 2234), 2.0), // retina 2x
+            (Rect::new(2560, 234, 1920, 1080), 1.0),  // right 1x
+        ]
+    }
+
+    #[test]
+    fn scale_at_point_picks_the_owning_monitor() {
+        let m = mixed_dpi();
+        assert_eq!(scale_at_point(100, 100, &m), Some(1.0)); // on primary
+        assert_eq!(scale_at_point(-3000, 2200, &m), Some(2.0)); // on retina
+        assert_eq!(scale_at_point(2600, 300, &m), Some(1.0)); // on right panel
+    }
+
+    #[test]
+    fn scale_at_point_is_none_when_off_all_monitors() {
+        // A frame saved on a now-disconnected monitor: caller falls back to 1.0.
+        assert_eq!(scale_at_point(-9000, -9000, &mixed_dpi()), None);
+    }
+
 
     // Three-monitor layout (primary first), physical px.
     fn monitors() -> Vec<Rect> {

@@ -79,6 +79,8 @@ pub struct Note {
     pub recap_at: Option<String>,
     /// JSON-encoded Goal {goal, subgoals, following_goal}. None = no goal set.
     pub goals: Option<String>,
+    /// JSON-encoded array of short inviolable project rules. None = none set.
+    pub guardrails: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

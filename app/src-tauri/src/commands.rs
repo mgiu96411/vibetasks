@@ -146,6 +146,7 @@ fn row_to_note(r: &Row) -> rusqlite::Result<Note> {
         recap: r.get("recap")?,
         recap_at: r.get("recap_at")?,
         goals: r.get("goals")?,
+        guardrails: r.get("guardrails")?,
     })
 }
 
@@ -1181,6 +1182,17 @@ pub fn detect_terminals(ids: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+/// Reveal the main window. The window is created hidden (see lib.rs `setup`);
+/// the frontend calls this after its first painted frame with data so the
+/// window never appears blank before the UI is ready. Showing an
+/// already-visible window is a no-op (a Rust-side fallback timer also reveals it
+/// if the frontend never calls).
+#[tauri::command]
+pub fn show_main_window(window: tauri::WebviewWindow) {
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 // ---- notes / goal -----------------------------------------------------------
 
 #[tauri::command]
@@ -1209,14 +1221,96 @@ pub fn set_notes(state: State<Db>, project_id: String, body: String) -> CmdResul
     Ok(())
 }
 
+const GUARDRAILS_MAX_ITEMS: usize = 20;
+const GUARDRAILS_ITEM_CHAR_CAP: usize = 200;
+const GUARDRAILS_TOTAL_CAP: usize = 2400;
+
+fn normalize_and_cap_guardrails(items: Vec<String>) -> Result<Vec<String>, String> {
+    let mut norm: Vec<String> = Vec::new();
+    for raw in items {
+        let t = raw.trim().to_string();
+        if t.is_empty() || norm.iter().any(|x| x == &t) {
+            continue;
+        }
+        norm.push(t);
+    }
+    if norm.len() > GUARDRAILS_MAX_ITEMS {
+        return Err(format!(
+            "Guardrails capped at {GUARDRAILS_MAX_ITEMS} rules — remove one before adding (got {}).",
+            norm.len()
+        ));
+    }
+    if let Some(long) = norm.iter().find(|s| s.chars().count() > GUARDRAILS_ITEM_CHAR_CAP) {
+        return Err(format!(
+            "Each guardrail must be ≤ {GUARDRAILS_ITEM_CHAR_CAP} chars — shorten \"{}…\".",
+            long.chars().take(40).collect::<String>()
+        ));
+    }
+    let total: usize = norm.iter().map(|s| s.chars().count()).sum();
+    if total > GUARDRAILS_TOTAL_CAP {
+        return Err(format!(
+            "Guardrails total {total} chars exceeds {GUARDRAILS_TOTAL_CAP} — shorten or remove one."
+        ));
+    }
+    Ok(norm)
+}
+
+#[tauri::command]
+pub fn set_guardrails(
+    state: State<Db>,
+    project_id: String,
+    items: Vec<String>,
+) -> CmdResult<()> {
+    let norm = normalize_and_cap_guardrails(items)?;
+    let json = serde_json::to_string(&norm).unwrap_or_else(|_| "[]".to_string());
+    let c = state.0.lock().unwrap();
+    let now = now_iso(&c);
+    c.execute(
+        "INSERT INTO note(project_id,body,updated_at,guardrails) VALUES(?,?,?,?) \
+         ON CONFLICT(project_id) DO UPDATE SET guardrails=excluded.guardrails, updated_at=excluded.updated_at",
+        params![project_id, "", now, json],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        build_start_prompt, iterm_applescript, launcher_script, normalize_repo_path,
-        open_fallback_args, plan_path_in, shell_quote, terminal_app_applescript,
-        terminal_bundle_name, LaunchGuard,
+        build_start_prompt, iterm_applescript, launcher_script, normalize_and_cap_guardrails,
+        normalize_repo_path, open_fallback_args, plan_path_in, shell_quote,
+        terminal_app_applescript, terminal_bundle_name, LaunchGuard,
     };
     use std::time::Duration;
+
+    #[test]
+    fn guardrails_normalizes_trims_dedupes_and_caps() {
+        // trim + dedupe + drop empties → ["a", "b"]
+        let ok = normalize_and_cap_guardrails(vec![
+            "  a  ".into(),
+            "".into(),
+            "a".into(),
+            "b".into(),
+        ])
+        .unwrap();
+        assert_eq!(ok, vec!["a", "b"]);
+
+        // over-item cap: 21 items → Err
+        let many: Vec<String> = (0..21).map(|i| format!("r{i}")).collect();
+        assert!(normalize_and_cap_guardrails(many).is_err());
+
+        // per-item char cap: one 201-char item → Err
+        let long = "x".repeat(201);
+        assert!(normalize_and_cap_guardrails(vec![long]).is_err());
+
+        // total-chars cap: 20 × 121-char items = 2420 > 2400 → Err
+        // (each is unique so dedupe doesn't fire, and 121 ≤ 200 per-item cap)
+        let fat: Vec<String> = (0..20).map(|i| format!("{:0>121}", i)).collect();
+        assert!(normalize_and_cap_guardrails(fat).is_err());
+
+        // valid small list → Ok
+        assert!(normalize_and_cap_guardrails(vec!["rule one".into(), "rule two".into()]).is_ok());
+    }
 
     #[test]
     fn terminal_bundle_name_maps_first_class_ids_only() {

@@ -105,6 +105,9 @@ export interface GoalData { goal: string; subgoals: string[]; following_goal: st
 export const setGoal = (projectId: string, data: GoalData) =>
   invoke<void>('set_goal', { projectId, goalsJson: JSON.stringify(data) });
 
+export const setGuardrails = (projectId: string, items: string[]) =>
+  invoke<void>('set_guardrails', { projectId, items });
+
 // ---- start button ---------------------------------------------------------
 
 export const setProjectRepoPath = (id: string, repoPath: string) =>

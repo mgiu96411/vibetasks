@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 use std::{fs, path::PathBuf};
 
-const SCHEMA_VERSION: i64 = 10;
+const SCHEMA_VERSION: i64 = 11;
 
 /// Resolve the DB path: `VIBETASKS_DB` env override, else `~/.vibetasks/vibetasks.db`.
 /// Ensures the parent directory exists.
@@ -244,6 +244,21 @@ fn migrate(c: &Connection) {
     if !has_goals {
         c.execute_batch("ALTER TABLE note ADD COLUMN goals TEXT DEFAULT NULL;")
             .expect("add goals column");
+    }
+
+    // v11: guardrails column on note (JSON array of short inviolable rules).
+    let has_guardrails = {
+        let mut stmt = c.prepare("PRAGMA table_info(note)").unwrap();
+        let cols: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(1))
+            .unwrap()
+            .filter_map(|x| x.ok())
+            .collect();
+        cols.iter().any(|n| n == "guardrails")
+    };
+    if !has_guardrails {
+        c.execute_batch("ALTER TABLE note ADD COLUMN guardrails TEXT DEFAULT NULL;")
+            .expect("add guardrails column");
     }
 
     c.execute_batch(&format!("PRAGMA user_version={SCHEMA_VERSION};"))

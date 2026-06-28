@@ -24,7 +24,7 @@ export interface Task {
 }
 export interface Todo { id: string; project_id: string; text: string; done: boolean; source: Source; position: number; created_at: string; updated_at: string; }
 export interface Goal { goal: string; subgoals: string[]; following_goal: string; }
-export interface Note { project_id: string; body: string; updated_at: string; recap: string; recap_at: string | null; goals: string | null; }
+export interface Note { project_id: string; body: string; updated_at: string; recap: string; recap_at: string | null; goals: string | null; guardrails: string | null; }
 export interface TaskLink { from_task_id: string; to_task_id: string; type: LinkType; }
 
 // Compact task card for model-facing board reads (no Details body). Includes subtasks.

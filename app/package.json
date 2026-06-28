@@ -2,7 +2,7 @@
   "name": "vibe-tasks-app",
   "description": "Tauri desktop app for Vibe Tasks",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {

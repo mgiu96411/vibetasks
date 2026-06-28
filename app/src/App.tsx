@@ -5,9 +5,10 @@
 // ResizeHandles let you resize the sidebar and right panel; sizes are persisted by
 // the store. Polling starts on mount.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { useStore, type Filter, type View } from './store';
+import { invoke } from '@tauri-apps/api/core';
+import { useStore, fitPanels, type Filter, type View } from './store';
 import Board from './components/Board';
 import Sidebar from './components/Sidebar';
 import LastSession from './components/LastSession';
@@ -19,9 +20,21 @@ import SearchBar from './components/SearchBar';
 import Toasts from './components/Toasts';
 import GraphView from './components/GraphView';
 import ResizeHandle from './components/ResizeHandle';
+import Guardrails from './components/Guardrails';
 
 const TITLEBAR_H = 52;
 const DEFAULT_SPACE_ID = 'space-current';
+
+// Tracks the live window width so panel widths can reflow as the user resizes.
+function useWindowWidth() {
+  const [w, setW] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setW(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return w;
+}
 
 // ---- title bar ----
 
@@ -197,10 +210,30 @@ export default function App() {
 
   const openNewTask = useStore((s) => s.openNewTask);
 
+  // Reflow the side panels so the center never collapses on a narrow window.
+  // On a wide window these equal the user's preferred sidebarW/rightW.
+  const winW = useWindowWidth();
+  const [effSidebarW, effRightW] = fitPanels(sidebarW, rightW, winW);
+
   useEffect(() => {
     startPolling();
     return () => stopPolling();
   }, [startPolling, stopPolling]);
+
+  // The native window is created hidden (lib.rs) so it never flashes blank
+  // before the UI is ready. Reveal it once the first snapshot has loaded — by
+  // then React has committed the DOM (this effect runs after commit), so the
+  // hidden webview already has the laid-out UI and shows it fully painted, with
+  // no blank frame. NB: do NOT gate this on requestAnimationFrame — rAF is
+  // paused while the window is hidden, so the reveal would never fire. A
+  // Rust-side fallback timer reveals it regardless if this never runs.
+  const snapshot = useStore((s) => s.snapshot);
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (revealedRef.current || !snapshot) return;
+    revealedRef.current = true;
+    void invoke('show_main_window').catch(() => {});
+  }, [snapshot]);
 
   // ⌘N / Ctrl+N opens the floating "New task" modal (preventDefault so the
   // webview doesn't try to open a new OS window).
@@ -218,12 +251,13 @@ export default function App() {
   return (
     <div
       className="app"
-      style={{ gridTemplateColumns: `${sidebarW}px 1fr ${rightW}px` }}
+      style={{ gridTemplateColumns: `${effSidebarW}px 1fr ${effRightW}px` }}
     >
       <Sidebar />
       <TitleBar />
       <main className="center">{view === 'graph' ? <GraphView /> : <Board />}</main>
       <div className="right">
+        <Guardrails />
         <LastSession />
         <Notes />
       </div>
@@ -232,12 +266,12 @@ export default function App() {
       <ResizeHandle
         orientation="vertical"
         onResize={resizeSidebar}
-        style={{ left: sidebarW - 3 }}
+        style={{ left: effSidebarW - 3 }}
       />
       <ResizeHandle
         orientation="vertical"
         onResize={resizeRight}
-        style={{ right: rightW - 3, top: TITLEBAR_H }}
+        style={{ right: effRightW - 3, top: TITLEBAR_H }}
       />
 
       {/* overlays */}

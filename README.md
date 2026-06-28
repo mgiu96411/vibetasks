@@ -45,6 +45,7 @@ catalog of built features, planned features, internal roadmap work, and public-c
   you were just looking at — it moves when you open another card and clears when you click empty
   board space.
 - **Notes & "Last session" recap** — an auto-saving notes pad per project, plus a read-only, dated recap of where you left off (Claude writes it at wrap-up via `set_recap`).
+- **Project Guardrails** — a **Guardrails** panel at the top of the right column holds up to **20** standing project rules (≤ 200 chars each, ≤ 2 400 chars total). Read with **`get_guardrails`**, replace the whole list with **`set_guardrails`**. When non-empty, the list is injected automatically into `get_board` and `resume` output as a `guardrails` array — zero token cost when unset. Distinct from Notes (freeform scratch), Goal (forward-looking), and Last session (backward-looking); Guardrails are present-tense rules Claude reads every turn.
 - **Multiple projects** — switch in the left rail. Claude-made and hand-made items coexist: a
   **✦** marks Claude's, and an **All / Mine / Claude's** filter narrows everything.
 - **Project spaces** — group boards into collapsible, user-defined sections in the left rail.
@@ -206,9 +207,12 @@ Now, in any Claude Code session, Claude can:
 - create / rename / delete projects, and reassign all tasks between projects (the "merge" half) —
   so a misnamed or duplicate board is fixable without SQL
 - list/create/rename/delete project spaces and move projects between them; `create_project` accepts
-  an optional `space`, otherwise new boards land in **Current projects**
+  an optional `space`, otherwise new boards land in **Current projects**. A board created from a
+  Claude Code session auto-fills its repository path (the Start-button launch dir) from that
+  session's working directory unless you pass an explicit `repo_path`
 - add / move / reorder / delete tasks, update task fields (title, Brief, Details, …) via `update_task`; set priority + kind; add subtasks; set code refs; link tasks
 - set project notes, and write the walk-away "Last session" recap (`set_recap`)
+- read and replace per-project standing rules with **`get_guardrails`** / **`set_guardrails`** (max 20 rules, ≤ 200 chars each, ≤ 2 400 chars total; auto-injected into `get_board` and `resume` when non-empty)
 - audit non-complete/non-dropped work with `audit_board`, then dry-run and atomically apply a
   reviewed cleanup with `apply_board_audit` (`confirm:true` is required to write)
 - read the board compactly (`get_board`), the relationship map (`get_map`), the full detail of

@@ -1,6 +1,6 @@
 {
   "name": "vibe-tasks",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Local-first desktop task manager and Claude Code MCP companion",
   "private": true,
   "license": "PolyForm-Noncommercial-1.0.0",

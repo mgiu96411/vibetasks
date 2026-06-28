@@ -157,13 +157,15 @@ export function resolveForRead(db: Database, opts: ResolveOpts): string {
   );
 }
 
-// Auto-fill the repo_path of a board being CREATED by a write from the session cwd —
-// but only when it is a real directory path, never a uuid/temp/worktree dir (same
-// signal the cwd basename guard uses). Returns undefined (→ NULL) otherwise. This is a
-// non-destructive suggestion for a brand-new board; resolveForWrite never overwrites an
-// existing board's repo_path, and the cwd here is NEVER used to pick which board a
-// write targets (board resolution keys off the name only — the ref 38 footgun).
-function autoRepoPath(cwd?: string): string | undefined {
+// Auto-fill the repo_path of a board being CREATED from the session cwd — used both by
+// resolveForWrite (write-bootstrap) and by the create_project tool, so a board born from a
+// Claude Code session lands with its Start-button launch dir already set to that session's
+// working directory. Only when it is a real directory path, never a uuid/temp/worktree dir
+// (same signal the cwd basename guard uses). Returns undefined (→ NULL) otherwise. This is a
+// non-destructive suggestion for a brand-new board; createProject/resolveForWrite never
+// overwrite an existing board's repo_path, and the cwd here is NEVER used to pick which board
+// a write targets (board resolution keys off the name only — the ref 38 footgun).
+export function autoRepoPath(cwd?: string): string | undefined {
   const path = cwd?.trim();
   if (!path) return undefined;
   if (UUIDISH.test(basename(path))) return undefined;
@@ -375,6 +377,46 @@ export function setRecap(db: Database, project_id: string, recap: string): void 
     .run(project_id, now, recap, now);
 }
 
+// Guardrails: a small always-loaded list of inviolable project rules, injected
+// into get_board/resume every turn. Hard-capped at the write layer.
+export const GUARDRAILS_MAX_ITEMS = 20;
+export const GUARDRAILS_ITEM_CHAR_CAP = 200;
+export const GUARDRAILS_TOTAL_CAP = 2400;
+
+function normalizeGuardrails(items: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of items) {
+    const t = raw.trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+export function setGuardrails(db: Database, project_id: string, items: string[]): string[] {
+  const norm = normalizeGuardrails(items);
+  if (norm.length > GUARDRAILS_MAX_ITEMS)
+    throw new Error(`Guardrails capped at ${GUARDRAILS_MAX_ITEMS} rules — remove one before adding (got ${norm.length}).`);
+  const long = norm.find((s) => [...s].length > GUARDRAILS_ITEM_CHAR_CAP);
+  if (long) throw new Error(`Each guardrail must be ≤ ${GUARDRAILS_ITEM_CHAR_CAP} chars — shorten "${long.slice(0, 40)}…".`);
+  const total = norm.reduce((n, s) => n + [...s].length, 0);
+  if (total > GUARDRAILS_TOTAL_CAP)
+    throw new Error(`Guardrails total ${total} chars exceeds ${GUARDRAILS_TOTAL_CAP} — shorten or remove one.`);
+  db.prepare(`INSERT INTO note(project_id,body,updated_at,guardrails) VALUES(?,?,?,?)
+    ON CONFLICT(project_id) DO UPDATE SET guardrails=excluded.guardrails, updated_at=excluded.updated_at`)
+    .run(project_id, '', nowIso(), JSON.stringify(norm));
+  return norm;
+}
+
+export function getGuardrails(db: Database, project_id: string): string[] {
+  const row = db.prepare('SELECT guardrails FROM note WHERE project_id=?').get(project_id) as { guardrails: string | null } | undefined;
+  if (!row?.guardrails) return [];
+  try { const v = JSON.parse(row.guardrails); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; }
+  catch { return []; }
+}
+
 // ---- Token-efficient reads ----
 const DESC_CAP = 600;
 const SUMMARY_CAP = 240;
@@ -389,6 +431,7 @@ export interface BoardView {
   detail: Task[];
   reopened: { id: string; ref: number; title: string; status: Status; parent_id: string | null }[];
   goal?: GoalData;
+  guardrails?: string[];
 }
 export function getBoard(db: Database, project_id: string): BoardView {
   const tasks = listProjectTasks(db, project_id);
@@ -409,7 +452,8 @@ export function getBoard(db: Database, project_id: string): BoardView {
   const reopened = tasks.filter(t => t.reopened_at)
     .map(t => ({ id: t.id, ref: t.ref, title: t.title, status: t.status, parent_id: t.parent_id }));
   const goal = getGoal(db, project_id) ?? undefined;
-  return { cards, detail, reopened, ...(goal ? { goal } : {}) };
+  const guardrails = getGuardrails(db, project_id);
+  return { cards, detail, reopened, ...(goal ? { goal } : {}), ...(guardrails.length ? { guardrails } : {}) };
 }
 // Compact list of every task with its reference number — for "work on #N" lookups.
 export type TaskListItem = Pick<Task, 'ref' | 'id' | 'title' | 'status' | 'priority' | 'kind'>;
@@ -445,6 +489,6 @@ export function resume(db: Database, project_id: string, opts: { include_map?: b
   const goal = board.goal;
   const base = { now: board.detail, titles, reopened: board.reopened,
     recap: note?.recap ?? '', recap_at: note?.recap_at ?? null, notes_excerpt: cap(note?.body ?? ''),
-    ...(goal ? { goal } : {}) };
+    ...(goal ? { goal } : {}), ...(board.guardrails?.length ? { guardrails: board.guardrails } : {}) };
   return opts.include_map ? { ...base, map: getMap(db, project_id) } : base;
 }

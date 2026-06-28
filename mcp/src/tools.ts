@@ -177,6 +177,11 @@ export function registerTools(s: McpServer, db: Database) {
   s.tool('set_goal', 'Set or replace the project next-goal used for milestone-driven prioritization. Pass empty strings to clear subgoals/following_goal. Omit project to use the session default.',
     { project: z.string().optional(), goal: z.string(), subgoals: z.array(z.string()).default([]), following_goal: z.string().default('') },
     async ({ project, goal, subgoals, following_goal }) => { r.setGoal(db, projW(project), { goal, subgoals, following_goal }); return ok(); });
+  s.tool('get_guardrails', 'Get the project guardrails — the always-loaded list of inviolable project rules (also injected into get_board/resume when set).',
+    { project: z.string().optional() }, async ({ project }) => json(r.getGuardrails(db, projR(project))));
+  s.tool('set_guardrails', 'Replace the project guardrails — the always-loaded inviolable rules Claude reads every turn. Hard cap: max 20 rules, 200 chars each, 2400 chars total; an over-cap call is rejected. Keep them few and sharp.',
+    { project: z.string().optional(), items: z.array(z.string()) },
+    async ({ project, items }) => { r.setGuardrails(db, projW(project), items); return ok(); });
   s.tool('create_space', 'Create a project space.', { name: z.string() },
     async ({ name }) => ok(r.createSpace(db, name).id));
   s.tool('rename_space', 'Rename a project space by exact name or id.',
@@ -207,10 +212,25 @@ export function registerTools(s: McpServer, db: Database) {
       r.moveProjectToSpace(db, foundProject.id, foundSpace.id);
       return ok(foundProject.id);
     });
-  s.tool('create_project', 'Create a project in Current projects or an explicit space.',
-    { name: z.string(), color: z.string().optional(), space: z.string().optional() },
-    async ({ name, color, space }) =>
-      ok(r.createProject(db, { name, color, source: 'claude', space_id: spaceId(space) }).id));
+  s.tool('create_project',
+    'Create a project in Current projects or an explicit space. repo_path (the Start-button ' +
+      'launch dir) auto-fills from the session working directory unless you pass one — a board ' +
+      'created from a Claude Code session keeps that session\'s path. Pass repo_path to override; ' +
+      'a uuid/temp/worktree cwd is skipped (left blank).',
+    {
+      name: z.string(),
+      color: z.string().optional(),
+      space: z.string().optional(),
+      repo_path: z.string().optional().describe('Explicit launch directory; overrides the session-cwd auto-fill.'),
+    },
+    async ({ name, color, space, repo_path }) =>
+      ok(r.createProject(db, {
+        name,
+        color,
+        source: 'claude',
+        space_id: spaceId(space),
+        repo_path: repo_path ?? r.autoRepoPath(process.cwd()),
+      }).id));
 
   // ---- Project repair: fix messy/misnamed/duplicate boards without raw SQL ----
   s.tool('rename_project', 'Rename a project by exact name or id.',

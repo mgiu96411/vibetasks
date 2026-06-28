@@ -662,7 +662,7 @@ button {
   /* Columns keep a usable min width and grow to fill; when they don't all fit,
      the board scrolls sideways instead of squishing. Each column scrolls its own
      cards vertically (see .column-body). */
-  grid-template-columns: repeat(5, minmax(260px, 1fr));
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
   /* Lock the single row to the board's height (minmax(0,…) so it can't be grown
      past the viewport by a tall column). Without this the row is `auto`-sized and
      a column with many cards stretches the row beyond the board, which clips the
@@ -1181,6 +1181,74 @@ button {
   flex: 0 1 auto;
   max-height: 45%;
 }
+.guardrails-panel {
+  flex: 0 1 auto;
+  max-height: 40%;
+}
+.guardrails-panel .gr-count {
+  font-size: 10px;
+  letter-spacing: normal;
+  color: var(--faint);
+  margin-left: 8px;
+}
+.guardrails-panel .gr-count.warn { color: var(--p-med); }
+.gr-empty {
+  color: var(--faint);
+  font-size: 12px;
+  font-style: italic;
+}
+.gr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+.gr-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px;
+}
+.gr-item .gr-num {
+  flex: 0 0 auto;
+  min-width: 14px;
+  text-align: right;
+  padding-top: 1px;
+  color: var(--faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.gr-item .gr-text { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; cursor: text; }
+.gr-item .gr-text:hover { color: var(--accent); }
+.gr-item .gr-edit {
+  flex: 1; min-width: 0;
+  background: var(--bg); border: 1px solid var(--accent-soft); border-radius: 6px;
+  color: var(--text); font-family: inherit; font-size: 12.5px; line-height: 1.45;
+  padding: 2px 6px; outline: none;
+}
+.gr-item .gr-del {
+  background: none; border: none; color: var(--faint);
+  font-size: 15px; line-height: 1; padding: 0 2px; flex: 0 0 auto;
+}
+.gr-item .gr-del:hover { color: var(--p-high); }
+.gr-add { display: flex; gap: 6px; margin-top: 8px; }
+.gr-add input {
+  flex: 1; min-width: 0;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: 7px;
+  color: var(--text); font-family: inherit; font-size: 12.5px; padding: 6px 8px; outline: none;
+}
+.gr-add input:focus { border-color: var(--accent-soft); }
+.gr-add button {
+  background: var(--accent-soft); border: 1px solid var(--border); border-radius: 7px;
+  color: var(--text); font-size: 13px; padding: 0 10px;
+}
+.gr-add button:disabled { opacity: 0.4; cursor: not-allowed; }
 .recap-body {
   font-size: 12.5px;
   line-height: 1.5;

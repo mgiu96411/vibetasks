@@ -65,8 +65,24 @@ function lsStr<T extends string>(key: string, allowed: readonly T[], def: T): T 
   const v = localStorage.getItem(key) as T | null;
   return v && allowed.includes(v) ? v : def;
 }
-const SIDEBAR = { def: 232, lo: 170, hi: 440 };
-const RIGHT = { def: 320, lo: 240, hi: 560 };
+export const SIDEBAR = { def: 232, lo: 170, hi: 440 };
+export const RIGHT = { def: 320, lo: 240, hi: 560 };
+/** The center pane never reflows below this; the side panels surrender width
+ *  first so the board stays usable on narrow windows. */
+export const MIN_CENTER = 460;
+
+/** Effective panel widths for the current window width. When the preferred
+ *  sidebar+right would squeeze the center below MIN_CENTER, shrink them
+ *  proportionally (never below their minimums) so the board keeps room. On a
+ *  wide-enough window this returns the preferred widths unchanged. */
+export function fitPanels(sidebarW: number, rightW: number, winW: number): [number, number] {
+  const avail = winW - MIN_CENTER;
+  if (sidebarW + rightW <= avail) return [sidebarW, rightW];
+  const minSum = SIDEBAR.lo + RIGHT.lo;
+  if (avail <= minSum) return [SIDEBAR.lo, RIGHT.lo];
+  const scale = avail / (sidebarW + rightW);
+  return [Math.round(sidebarW * scale), Math.round(rightW * scale)];
+}
 
 interface State {
   snapshot: Snapshot | null;
@@ -140,6 +156,9 @@ interface State {
 
   // ---- goal ----
   setGoal: (data: api.GoalData) => Promise<void>;
+
+  // ---- guardrails ----
+  setGuardrails: (items: string[]) => Promise<void>;
 
   // ---- toasts ----
   toasts: ToastItem[];
@@ -433,6 +452,18 @@ export const useStore = create<State>((set, get) => ({
     if (!pid) return;
     await api.setGoal(pid, data);
     await get().refresh();
+  },
+
+  setGuardrails: async (items) => {
+    const pid = get().activeProjectId;
+    if (!pid) return;
+    try {
+      await api.setGuardrails(pid, items);
+      await get().refresh();
+    } catch (e) {
+      get().pushToast({ kind: 'error', text: String(e) });
+      throw e;
+    }
   },
 
   // ---- toasts ----
